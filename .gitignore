@@ -42,7 +42,7 @@ Thumbs.db
 # Other
 *.log
 *.cache
+*.ps1
 
 # Ignore vendor for packages
-
 
