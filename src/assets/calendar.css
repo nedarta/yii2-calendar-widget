@@ -1,0 +1,124 @@
+.calendar-widget {
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.calendar-widget .calendar-header {
+    margin-bottom: 20px;
+}
+
+.calendar-widget .calendar-grid {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.calendar-widget .day-name, 
+.calendar-widget .day-number {
+    width: 14.28%;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.calendar-widget .day-name {
+    color: #333;
+    font-weight: 500;
+}
+
+.calendar-widget .day-name:first-child,
+.calendar-widget .day-number:nth-child(7n+1) {
+    color: #f44336;
+}
+
+.calendar-widget .day-name:last-child,
+.calendar-widget .day-number:nth-child(7n) {
+    color: #0DA5F6;
+}
+
+.calendar-widget .day-number {
+    color: #A8A7A8;
+}
+
+.calendar-widget .day-link {
+    color: inherit;
+    text-decoration: none;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.calendar-widget .day-link:hover {
+    background-color: #f0f0f0;
+}
+
+.calendar-widget .day-link.active {
+    background-color: #1DD155;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(29, 209, 85, 0.4);
+}
+
+.calendar-widget .day-link.has-events::after {
+    content: "";
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #FC3969;
+    top: 2px;
+    right: 2px;
+}
+
+.calendar-widget .day-link.active.has-events::after {
+    display: none;
+}
+
+.calendar-widget .event-list {
+    border-left: 1px solid #f0f0f0;
+    padding-left: 20px;
+}
+
+.calendar-widget .event-item {
+    border-bottom: 1px solid #F2F1F2;
+    padding: 10px 0;
+}
+
+.calendar-widget .event-item:last-child {
+    border-bottom: none;
+}
+
+.calendar-widget .event-time {
+    font-weight: bold;
+    color: #333;
+    width: 60px;
+}
+
+.calendar-widget .calendar-nav-btn {
+    border: none;
+    background: none;
+    font-size: 1.2rem;
+    color: #4C3571;
+    cursor: pointer;
+    padding: 0 10px;
+}
+
+.calendar-widget .calendar-nav-btn:hover {
+    color: #1DD155;
+}
+
+@media (max-width: 768px) {
+    .calendar-widget .event-list {
+        border-left: none;
+        border-top: 1px solid #f0f0f0;
+        padding-left: 0;
+        padding-top: 20px;
+        margin-top: 20px;
+    }
+}

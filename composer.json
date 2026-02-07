@@ -1,0 +1,52 @@
+{
+    "name": "nedarta/yii2-calendar-widget",
+    "description": "A premium, modern, and AJAX-powered calendar widget for Yii2 Framework and Bootstrap 5.",
+    "type": "yii2-extension",
+    "keywords": [
+        "yii2",
+        "extension",
+        "widget",
+        "calendar",
+        "ajax",
+        "bootstrap5"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "nedarta"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "^2.0.13",
+        "yiisoft/yii2-bootstrap5": "^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "yiisoft/yii2-dev": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "nedarta\\calendar\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "nedarta\\calendar\\tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        }
+    ],
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true
+        }
+    }
+}
