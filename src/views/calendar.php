@@ -21,13 +21,19 @@ $monthName = DateTime::createFromFormat('!m', $month)->format('F');
 
 // Build URLs from route arrays or absolute/relative strings
 $buildUrl = static function ($base, array $params): string {
-    if (is_array($base)) {
-        return Url::to(array_merge($base, $params));
-    }
-    $url = Url::to($base);
-    $separator = (strpos($url, '?') === false) ? '?' : '&';
-    return $url . $separator . http_build_query($params);
+	if (is_array($base)) {
+		return Url::to(array_merge($base, $params));
+	}
+
+	$url = Url::to($base);
+
+	// remove existing query string
+	$parts = parse_url($url);
+	$path = $parts['path'] ?? '';
+
+	return Url::to($path) . '?' . http_build_query($params);
 };
+
 
 // Prepare prev/next links
 $prevMonth = $month - 1;
@@ -47,7 +53,7 @@ if ($nextMonth > 12) {
 ?>
 
 <div <?= Html::renderTagAttributes($options) ?>>
-    <?php Pjax::begin(['id' => $widgetId . '-pjax', 'enablePushState' => false]); ?>
+    <?php Pjax::begin(['id' => $widgetId . '-pjax', 'enablePushState' => false, 'enableReplaceState' => true,]); ?>
     
     <div class="row">
         <!-- Calendar Grid Column -->
