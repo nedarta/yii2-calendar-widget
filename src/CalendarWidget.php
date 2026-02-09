@@ -70,7 +70,7 @@ class CalendarWidget extends Widget
         if ($request->isPjax) {
             $this->month = (int)$request->get('month', $this->month);
             $this->year = (int)$request->get('year', $this->year);
-            $this->selectedDate = $request->get('selectedDate', $this->selectedDate);
+            $this->selectedDate = $request->get('date', $request->get('selectedDate', $this->selectedDate));
         }
 
         $this->month = max(1, min(12, (int)$this->month));

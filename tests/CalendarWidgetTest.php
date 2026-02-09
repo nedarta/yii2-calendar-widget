@@ -416,4 +416,31 @@ class CalendarWidgetTest extends TestCase
         $this->assertArrayHasKey('2025-05-15', $events);
         $this->assertEquals('10:30', $events['2025-05-15'][0]['time']);
     }
+    public function testInitWithDateParameter()
+    {
+        $request = new class extends \yii\web\Request {
+            public $isPjax = true;
+            public $queryParams = ['date' => '2026-03-15'];
+            
+            public function getIsPjax() {
+                return $this->isPjax;
+            }
+            
+            public function get($name = null, $defaultValue = null) {
+                return $this->queryParams[$name] ?? $defaultValue;
+            }
+            
+            public function getUrl() {
+                return '/test/url';
+            }
+        };
+        
+        \Yii::$app->set('request', $request);
+
+        $widget = new CalendarWidget();
+        $widget->init();
+
+        $this->assertEquals('2026-03-15', $widget->selectedDate);
+    }
 }
+

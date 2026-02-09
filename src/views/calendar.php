@@ -95,7 +95,7 @@ if ($nextMonth > 12) {
                             $isActive = ($date === $selectedDate);
                             $class = 'day-link' . ($isActive ? ' active' : '') . ($hasEvents ? ' has-events' : '');
                             ?>
-                            <?= Html::a($dayNum, $buildUrl($viewUrl, ['date' => $date, 'month' => $month, 'year' => $year, 'selectedDate' => $date]), [
+                            <?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
                                 'class' => $class,
                                 'data-pjax' => 1,
                                 'data-date' => $date,
