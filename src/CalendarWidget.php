@@ -136,7 +136,10 @@ class CalendarWidget extends Widget
         CalendarAsset::register($this->view);
         
         $events = $this->getEvents();
-        $days = $this->generateCalendarDays();
+	    $days = array_values(array_filter(
+		    $this->generateCalendarDays(),
+		    fn($d) => !empty($d['inMonth'])
+	    ));
 
         // Annotate hasEvents and isSelected on each cell
         foreach ($days as &$cell) {
