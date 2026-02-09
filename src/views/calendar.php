@@ -16,6 +16,7 @@ use yii\widgets\Pjax;
 /** @var array $dayNames */
 /** @var int $firstDayOfWeek */
 /** @var array $options */
+/** @var DateTimeZone $timeZone */
 
 $monthName = DateTime::createFromFormat('!m', $month)->format('F');
 
@@ -48,6 +49,14 @@ $nextYear = $year;
 if ($nextMonth > 12) {
     $nextMonth = 1;
     $nextYear++;
+}
+
+// Prepare a DateTimeImmutable 'now' in the provided timezone for marking today
+try {
+    $now = new DateTimeImmutable('now', $timeZone ?? new DateTimeZone(date_default_timezone_get()));
+    $todayString = $now->format('Y-m-d');
+} catch (\Throwable $e) {
+    $todayString = date('Y-m-d');
 }
 
 ?>
@@ -86,14 +95,37 @@ if ($nextMonth > 12) {
                 <div class="day-name"><?= Html::encode($dayName) ?></div>
             <?php endforeach; ?>
 
-                <?php foreach ($days as $date): ?>
+                <?php foreach ($days as $cell): ?>
                     <div class="day-number">
-                        <?php if ($date): ?>
-                            <?php 
-                            $dayNum = (int)date('d', strtotime($date));
-                            $hasEvents = isset($events[$date]);
-                            $isActive = ($date === $selectedDate);
-                            $class = 'day-link' . ($isActive ? ' active' : '') . ($hasEvents ? ' has-events' : '');
+                        <?php if ($cell && is_array($cell) && isset($cell['date'])): ?>
+                            <?php
+                                $date = $cell['date'];
+                                $dayNum = $cell['label'] ?? (int)substr($date, -2);
+                                $hasEvents = $cell['hasEvents'] ?? isset($events[$date]);
+                                $isActive = $cell['isSelected'] ?? ($date === $selectedDate);
+                                $isToday = $cell['isToday'] ?? ($date === $todayString);
+                                $class = 'day-link' . ($isActive ? ' active' : '') . ($hasEvents ? ' has-events' : '') . ($isToday ? ' today' : '');
+                            ?>
+                            <?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
+                                'class' => $class,
+                                'data-pjax' => 1,
+                                'data-date' => $date,
+                                'aria-current' => $isActive ? 'date' : null,
+                            ]) ?>
+                        <?php elseif (is_string($cell) && $cell !== ''): ?>
+                            <?php // backward compat: string date ?>
+                            <?php
+                                $date = $cell;
+                                try {
+                                    $dt = new DateTimeImmutable($date, $timeZone ?? new DateTimeZone(date_default_timezone_get()));
+                                    $dayNum = (int)$dt->format('d');
+                                } catch (\Throwable $e) {
+                                    $dayNum = (int)substr($date, -2);
+                                }
+                                $hasEvents = isset($events[$date]);
+                                $isActive = ($date === $selectedDate);
+                                $isToday = ($date === $todayString);
+                                $class = 'day-link' . ($isActive ? ' active' : '') . ($hasEvents ? ' has-events' : '') . ($isToday ? ' today' : '');
                             ?>
                             <?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
                                 'class' => $class,

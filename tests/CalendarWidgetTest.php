@@ -110,25 +110,32 @@ class CalendarWidgetTest extends TestCase
         // Should always have 42 days (6 weeks)
         $this->assertCount(42, $days);
 
-        // Count leading nulls
-        $leadingNulls = 0;
+        // Count leading empty/non-month slots
+        $leadingNonMonth = 0;
         foreach ($days as $day) {
-            if ($day === null) {
-                $leadingNulls++;
+            if (!is_array($day) || empty($day['inMonth'])) {
+                $leadingNonMonth++;
             } else {
                 break;
             }
         }
-        $this->assertEquals($expectedNullsBefore, $leadingNulls);
+        $this->assertEquals($expectedNullsBefore, $leadingNonMonth);
 
         // Check first non-null date
-        $firstNonNull = array_filter($days);
-        $this->assertEquals($expectedFirstDate, reset($firstNonNull));
+        $firstInMonth = null;
+        foreach ($days as $day) {
+            if (is_array($day) && !empty($day['inMonth'])) {
+                $firstInMonth = $day['date'];
+                break;
+            }
+        }
+        $this->assertEquals($expectedFirstDate, $firstInMonth);
 
         // Check last date of the month
         $daysInMonth = (int)date('t', strtotime("$year-$month-01"));
         $expectedLastDateFull = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
-        $this->assertContains($expectedLastDateFull, $days);
+        $dates = array_map(function($d) { return is_array($d) && isset($d['date']) ? $d['date'] : null; }, $days);
+        $this->assertContains($expectedLastDateFull, $dates);
     }
 
     public function calendarDaysProvider()
@@ -366,8 +373,9 @@ class CalendarWidgetTest extends TestCase
         $days = $method->invoke($widget);
 
         // February 2024 has 29 days (leap year)
-        $this->assertContains('2024-02-29', $days);
-        $this->assertNotContains('2024-02-30', $days);
+        $dates = array_map(function($d) { return is_array($d) && isset($d['date']) ? $d['date'] : null; }, $days);
+        $this->assertContains('2024-02-29', $dates);
+        $this->assertNotContains('2024-02-30', $dates);
     }
 
     public function testNonLeapYearFebruary()
@@ -384,8 +392,9 @@ class CalendarWidgetTest extends TestCase
         $days = $method->invoke($widget);
 
         // February 2025 has 28 days (non-leap year)
-        $this->assertContains('2025-02-28', $days);
-        $this->assertNotContains('2025-02-29', $days);
+        $dates = array_map(function($d) { return is_array($d) && isset($d['date']) ? $d['date'] : null; }, $days);
+        $this->assertContains('2025-02-28', $dates);
+        $this->assertNotContains('2025-02-29', $dates);
     }
 
     public function testEventDateNormalization()

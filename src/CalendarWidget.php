@@ -8,6 +8,8 @@ use yii\helpers\Html;
 use yii\helpers\ArrayHelper;
 use yii\db\ActiveQuery;
 use DateTime;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * CalendarWidget
@@ -45,16 +47,45 @@ class CalendarWidget extends Widget
     {
         parent::init();
         
-        $this->month = $this->month ?? (int)date('m');
-        $this->year = $this->year ?? (int)date('Y');
-        $this->selectedDate = $this->selectedDate ?? date('Y-m-d');
-        
+        $tz = $this->getTimeZone();
+        $now = new DateTimeImmutable('now', $tz);
+
+        $this->month = $this->month ?? (int)$now->format('m');
+        $this->year = $this->year ?? (int)$now->format('Y');
+        $this->selectedDate = $this->selectedDate ?? $now->format('Y-m-d');
+
         // Set default URLs if not provided
         if ($this->navUrl === null) {
-            $this->navUrl = Yii::$app->request->url;
+            try {
+                if (isset(Yii::$app) && Yii::$app->has('request')) {
+                    $req = Yii::$app->get('request');
+                    if ($req instanceof \yii\web\Request) {
+                        $this->navUrl = $req->url;
+                    } else {
+                        $this->navUrl = null;
+                    }
+                } else {
+                    $this->navUrl = null;
+                }
+            } catch (\Throwable $e) {
+                $this->navUrl = null;
+            }
         }
         if ($this->viewUrl === null) {
-            $this->viewUrl = Yii::$app->request->url;
+            try {
+                if (isset(Yii::$app) && Yii::$app->has('request')) {
+                    $req = Yii::$app->get('request');
+                    if ($req instanceof \yii\web\Request) {
+                        $this->viewUrl = $req->url;
+                    } else {
+                        $this->viewUrl = null;
+                    }
+                } else {
+                    $this->viewUrl = null;
+                }
+            } catch (\Throwable $e) {
+                $this->viewUrl = null;
+            }
         }
         
         // Set default HTML options
@@ -66,8 +97,8 @@ class CalendarWidget extends Widget
         }
         
         // Handle AJAX month/year changes
-        $request = Yii::$app->request;
-        if ($request->isPjax) {
+        $request = (isset(Yii::$app) && Yii::$app->has('request')) ? Yii::$app->get('request') : null;
+        if ($request instanceof \yii\web\Request && !empty($request->isPjax)) {
             $this->month = (int)$request->get('month', $this->month);
             $this->year = (int)$request->get('year', $this->year);
             $this->selectedDate = $request->get('date', $request->get('selectedDate', $this->selectedDate));
@@ -80,11 +111,23 @@ class CalendarWidget extends Widget
             $this->firstDayOfWeek = 0;
         }
 
-        $selectedTimestamp = strtotime((string)$this->selectedDate);
-        if ($selectedTimestamp === false || $selectedTimestamp <= 0) {
+        // Normalize selectedDate using resolved timezone
+        try {
+            $tz = $this->getTimeZone();
+            if (is_numeric($this->selectedDate)) {
+                $dt = (new DateTimeImmutable('@' . (int)$this->selectedDate))->setTimezone($tz);
+            } else {
+                // Try strict Y-m-d first
+                $dt = DateTimeImmutable::createFromFormat('!Y-m-d', (string)$this->selectedDate, $tz);
+                if ($dt === false) {
+                    // Try generic parse
+                    $dt = new DateTimeImmutable((string)$this->selectedDate, $tz);
+                }
+            }
+            $this->selectedDate = $dt->format('Y-m-d');
+        } catch (\Throwable $e) {
+            // Fallback to first day of current month in resolved tz
             $this->selectedDate = sprintf('%04d-%02d-01', $this->year, $this->month);
-        } else {
-            $this->selectedDate = date('Y-m-d', $selectedTimestamp);
         }
     }
 
@@ -94,7 +137,17 @@ class CalendarWidget extends Widget
         
         $events = $this->getEvents();
         $days = $this->generateCalendarDays();
-        
+
+        // Annotate hasEvents and isSelected on each cell
+        foreach ($days as &$cell) {
+            if (is_array($cell) && isset($cell['date'])) {
+                $cellDate = $cell['date'];
+                $cell['hasEvents'] = isset($events[$cellDate]);
+                $cell['isSelected'] = ($cellDate === $this->selectedDate);
+            }
+        }
+        unset($cell);
+
         return $this->render($this->viewName, [
             'month' => $this->month,
             'year' => $this->year,
@@ -107,6 +160,7 @@ class CalendarWidget extends Widget
             'dayNames' => $this->dayNames,
             'firstDayOfWeek' => $this->firstDayOfWeek,
             'options' => $this->options,
+            'timeZone' => $this->getTimeZone(),
         ]);
     }
 
@@ -116,11 +170,16 @@ class CalendarWidget extends Widget
             return [];
         }
 
-        $startDate = sprintf('%04d-%02d-01 00:00:00', $this->year, $this->month);
-        $endDateExclusive = date('Y-m-d 00:00:00', strtotime($startDate . ' +1 month'));
+        $tz = $this->getTimeZone();
+        $start = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $this->year, $this->month), $tz);
+        $endExclusive = $start->modify('+1 month');
+
         if ($this->dateIsTimestamp) {
-            $startDate = strtotime($startDate);
-            $endDateExclusive = strtotime($endDateExclusive);
+            $startDate = $start->getTimestamp();
+            $endDateExclusive = $endExclusive->getTimestamp();
+        } else {
+            $startDate = $start->format('Y-m-d H:i:s');
+            $endDateExclusive = $endExclusive->format('Y-m-d H:i:s');
         }
 
         $models = (clone $this->query)
@@ -134,20 +193,40 @@ class CalendarWidget extends Widget
             $dateValue = ArrayHelper::getValue($model, $this->dateAttribute);
             $timeValue = ArrayHelper::getValue($model, $this->timeAttribute);
 
-            $dateTimestamp = is_numeric($dateValue) ? (int)$dateValue : strtotime((string)$dateValue);
-            if ($dateTimestamp === false || $dateTimestamp <= 0) {
-                continue;
+            // Parse date value
+            if (is_numeric($dateValue)) {
+                $dateDt = (new DateTimeImmutable('@' . (int)$dateValue))->setTimezone($tz);
+            } else {
+                $dateDt = DateTimeImmutable::createFromFormat('!Y-m-d', (string)$dateValue, $tz);
+                if ($dateDt === false) {
+                    try {
+                        $dateDt = new DateTimeImmutable((string)$dateValue, $tz);
+                    } catch (\Throwable $e) {
+                        continue;
+                    }
+                }
             }
 
-            $timeTimestamp = is_numeric($timeValue) ? (int)$timeValue : strtotime((string)$timeValue);
-            if ($timeTimestamp === false || $timeTimestamp <= 0) {
-                continue;
+            // Parse time value
+            if (is_numeric($timeValue)) {
+                $timeDt = (new DateTimeImmutable('@' . (int)$timeValue))->setTimezone($tz);
+            } else {
+                // Time may be H:i or full datetime; try H:i first
+                $timeDt = DateTimeImmutable::createFromFormat('!H:i', (string)$timeValue, $tz);
+                if ($timeDt === false) {
+                    try {
+                        $timeDt = new DateTimeImmutable((string)$timeValue, $tz);
+                    } catch (\Throwable $e) {
+                        // fallback to midnight
+                        $timeDt = $dateDt->setTime(0, 0);
+                    }
+                }
             }
 
             // Normalize date to Y-m-d for grouping
-            $date = date('Y-m-d', $dateTimestamp);
+            $date = $dateDt->format('Y-m-d');
             // Normalize time to H:i for display
-            $time = date('H:i', $timeTimestamp);
+            $time = $timeDt->format('H:i');
 
             $events[$date][] = [
                 'time' => $time,
@@ -160,30 +239,71 @@ class CalendarWidget extends Widget
 
     protected function generateCalendarDays()
     {
-        $firstDayOfMonth = new DateTime(sprintf('%04d-%02d-01', $this->year, $this->month));
+        $tz = $this->getTimeZone();
+        $firstDayOfMonth = new DateTimeImmutable(sprintf('%04d-%02d-01', $this->year, $this->month), $tz);
         $daysInMonth = (int)$firstDayOfMonth->format('t');
         $startDayOfWeek = (int)$firstDayOfMonth->format('w'); // 0 (Sun) to 6 (Sat)
 
         // Adjust for firstDayOfWeek setting
         $offset = ($startDayOfWeek - $this->firstDayOfWeek + 7) % 7;
 
-        $days = [];
-        
-        // Fill leading empty slots
-        for ($i = 0; $i < $offset; $i++) {
-            $days[] = null;
+        // Calculate the start date for the calendar grid (visible start cell)
+        $startDate = $firstDayOfMonth->modify(sprintf('-%d days', $offset));
+
+        $now = new DateTimeImmutable('now', $tz);
+
+        $cells = [];
+        for ($i = 0; $i < 42; $i++) {
+            $cellDt = $startDate->modify("+{$i} days");
+            $cellDate = $cellDt->format('Y-m-d');
+            $cells[] = [
+                'date' => $cellDate,
+                'label' => (int)$cellDt->format('j'),
+                'inMonth' => ($cellDt->format('Y-m') === $firstDayOfMonth->format('Y-m')),
+                'isToday' => ($cellDt->format('Y-m-d') === $now->format('Y-m-d')),
+                'isSelected' => ($cellDt->format('Y-m-d') === $this->selectedDate),
+                'hasEvents' => false,
+            ];
         }
 
-        // Fill month days
-        for ($day = 1; $day <= $daysInMonth; $day++) {
-            $days[] = sprintf('%04d-%02d-%02d', $this->year, $this->month, $day);
+        return $cells;
+    }
+
+    /**
+     * Public accessor for testing to retrieve calendar days
+     */
+    public function getCalendarDays()
+    {
+        return $this->generateCalendarDays();
+    }
+
+    /**
+     * Resolve timezone using Formatter->timeZone > App timeZone > PHP default
+     *
+     * @return DateTimeZone
+     */
+    public function getTimeZone(): DateTimeZone
+    {
+        // Prefer formatter's timeZone if explicitly set
+        if (isset(Yii::$app) && Yii::$app->has('formatter')) {
+            $formatter = Yii::$app->get('formatter');
+            if (!empty($formatter->timeZone)) {
+                try {
+                    return new DateTimeZone($formatter->timeZone);
+                } catch (\Throwable $e) {
+                    // fallthrough
+                }
+            }
         }
 
-        // Fill trailing empty slots to ensure 42 days (6 weeks)
-        while (count($days) < 42) {
-            $days[] = null;
+        if (isset(Yii::$app) && !empty(Yii::$app->timeZone)) {
+            try {
+                return new DateTimeZone(Yii::$app->timeZone);
+            } catch (\Throwable $e) {
+                // fallthrough
+            }
         }
 
-        return $days;
+        return new DateTimeZone(date_default_timezone_get());
     }
 }
