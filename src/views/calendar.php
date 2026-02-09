@@ -51,12 +51,14 @@ use yii\widgets\Pjax;
             </div>
 
             <div class="calendar-grid">
-				<?php foreach ($orderedDayNames as $dayName): ?>
-                    <div class="day-name"><?= Html::encode($dayName) ?></div>
+				<?php foreach ($orderedDayNames as $index => $dayName): ?>
+                    <div class="day-name<?= ($index === 0 || $index === 6) ? ' weekend' : '' ?>" data-day="<?= $index ?>">
+						<?= Html::encode($dayName) ?>
+                    </div>
 				<?php endforeach; ?>
 
 				<?php foreach ($days as $cell): ?>
-                    <div class="day-number">
+                    <div class="day-number<?= !empty($cell['isWeekend']) ? ' weekend' : '' ?>" data-day="<?= $cell['dayOfWeek'] ?? '' ?>">
 						<?php
 						$date = $cell['date'];
 						$dayNum = $cell['label'];

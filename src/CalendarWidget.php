@@ -497,6 +497,8 @@ class CalendarWidget extends Widget
 	 *               - 'isToday' (bool): True if this cell represents today's date
 	 *               - 'isSelected' (bool): True if this cell matches $selectedDate
 	 *               - 'hasEvents' (bool): Initially false, updated later in run()
+	 *               - 'isWeekend' (bool): True if this cell falls on a weekend day
+	 *               - 'dayOfWeek' (int): Day of week position (0-6) relative to firstDayOfWeek
 	 */
 	protected function generateCalendarDays()
 	{
@@ -515,8 +517,12 @@ class CalendarWidget extends Widget
 		// Adjust for the configured first day of week
 		$paddingDays = ($firstDayOfWeek - $this->firstDayOfWeek + 7) % 7;
 
+		// Track position in grid for weekend detection
+		$gridPosition = 0;
+
 		// Add empty cells at the beginning
 		for ($i = 0; $i < $paddingDays; $i++) {
+			$dayOfWeek = $gridPosition % 7;
 			$cells[] = [
 				'date' => '',
 				'label' => '',
@@ -524,13 +530,17 @@ class CalendarWidget extends Widget
 				'isToday' => false,
 				'isSelected' => false,
 				'hasEvents' => false,
+				'isWeekend' => $this->isWeekendDay($dayOfWeek),
+				'dayOfWeek' => $dayOfWeek,
 			];
+			$gridPosition++;
 		}
 
 		// Add actual days of the month
 		for ($i = 1; $i <= $daysInMonth; $i++) {
 			$cellDt = $firstDayOfMonth->modify("+".($i-1)." days");
 			$cellDate = $cellDt->format('Y-m-d');
+			$dayOfWeek = $gridPosition % 7;
 			$cells[] = [
 				'date' => $cellDate,
 				'label' => $i,
@@ -538,13 +548,17 @@ class CalendarWidget extends Widget
 				'isToday' => ($cellDate === $now->format('Y-m-d')),
 				'isSelected' => ($cellDate === $this->selectedDate),
 				'hasEvents' => false,
+				'isWeekend' => $this->isWeekendDay($dayOfWeek),
+				'dayOfWeek' => $dayOfWeek,
 			];
+			$gridPosition++;
 		}
 
 		// Add empty cells at the end to complete the grid (optional, for cleaner layout)
 		$totalCells = count($cells);
 		$remainingCells = (7 - ($totalCells % 7)) % 7;
 		for ($i = 0; $i < $remainingCells; $i++) {
+			$dayOfWeek = $gridPosition % 7;
 			$cells[] = [
 				'date' => '',
 				'label' => '',
@@ -552,10 +566,34 @@ class CalendarWidget extends Widget
 				'isToday' => false,
 				'isSelected' => false,
 				'hasEvents' => false,
+				'isWeekend' => $this->isWeekendDay($dayOfWeek),
+				'dayOfWeek' => $dayOfWeek,
 			];
+			$gridPosition++;
 		}
 
 		return $cells;
+	}
+
+	/**
+	 * Determines if a given day of week position is a weekend.
+	 *
+	 * Weekend days are determined based on the grid position:
+	 * - Position 0 (first column) = Sunday (if firstDayOfWeek is 0) or Monday (if firstDayOfWeek is 1)
+	 * - Position 6 (last column) = Saturday (if firstDayOfWeek is 0) or Sunday (if firstDayOfWeek is 1)
+	 *
+	 * This method assumes Saturday and Sunday are weekend days.
+	 *
+	 * @param int $dayOfWeek Position in the week grid (0-6)
+	 * @return bool True if this position represents a weekend day
+	 */
+	protected function isWeekendDay(int $dayOfWeek): bool
+	{
+		// Map grid position to actual day of week considering firstDayOfWeek offset
+		$actualDayOfWeek = ($dayOfWeek + $this->firstDayOfWeek) % 7;
+
+		// 0 = Sunday, 6 = Saturday
+		return $actualDayOfWeek === 0 || $actualDayOfWeek === 6;
 	}
 
 

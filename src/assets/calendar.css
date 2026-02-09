@@ -13,7 +13,7 @@
     flex-wrap: wrap;
 }
 
-.calendar-widget .day-name, 
+.calendar-widget .day-name,
 .calendar-widget .day-number {
     width: 14.28%;
     height: 48px;
@@ -28,13 +28,17 @@
     font-weight: 500;
 }
 
-.calendar-widget .day-name:first-child,
-.calendar-widget .day-number:nth-child(7n+1) {
+/* Sunday styling (first weekend column - red) */
+.calendar-widget .day-name[data-day="0"],
+.calendar-widget .day-name.weekend:first-of-type,
+.calendar-widget .day-number[data-day="0"] {
     color: #f44336;
 }
 
-.calendar-widget .day-name:last-child,
-.calendar-widget .day-number:nth-child(7n) {
+/* Saturday styling (last weekend column - blue) */
+.calendar-widget .day-name[data-day="6"],
+.calendar-widget .day-name.weekend:last-of-type,
+.calendar-widget .day-number[data-day="6"] {
     color: #0DA5F6;
 }
 
