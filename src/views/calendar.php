@@ -1,7 +1,6 @@
 <?php
 
 use yii\helpers\Html;
-use yii\helpers\Url;
 use yii\widgets\Pjax;
 
 /** @var yii\web\View $this */
@@ -11,47 +10,17 @@ use yii\widgets\Pjax;
 /** @var array $events */
 /** @var string $selectedDate */
 /** @var string $widgetId */
-/** @var string $navUrl */
-/** @var string $viewUrl */
-/** @var array $dayNames */
-/** @var int $firstDayOfWeek */
+/** @var string|array $navUrl */
+/** @var string|array $viewUrl */
 /** @var array $options */
-/** @var DateTimeZone $timeZone */
-
-$monthName = DateTime::createFromFormat('!m', $month)->format('F');
-
-$buildUrl = static function ($base, array $params): string {
-	if (is_array($base)) {
-		return Url::to(array_merge($base, $params));
-	}
-
-	$url = Url::to($base);
-	$parts = parse_url($url);
-	$path = $parts['path'] ?? '';
-
-	return Url::to($path) . '?' . http_build_query($params);
-};
-
-$prevMonth = $month - 1;
-$prevYear = $year;
-if ($prevMonth < 1) {
-	$prevMonth = 12;
-	$prevYear--;
-}
-
-$nextMonth = $month + 1;
-$nextYear = $year;
-if ($nextMonth > 12) {
-	$nextMonth = 1;
-	$nextYear++;
-}
-
-try {
-	$now = new DateTimeImmutable('now', $timeZone ?? new DateTimeZone(date_default_timezone_get()));
-	$todayString = $now->format('Y-m-d');
-} catch (\Throwable $e) {
-	$todayString = date('Y-m-d');
-}
+/** @var string $monthName */
+/** @var int $prevMonth */
+/** @var int $prevYear */
+/** @var int $nextMonth */
+/** @var int $nextYear */
+/** @var string $todayString */
+/** @var array $orderedDayNames */
+/** @var \Closure $buildUrl */
 
 ?>
 
@@ -82,14 +51,7 @@ try {
             </div>
 
             <div class="calendar-grid">
-				<?php
-				// Reorder day names based on firstDayOfWeek
-				$orderedDayNames = array_merge(
-					array_slice($dayNames, $firstDayOfWeek),
-					array_slice($dayNames, 0, $firstDayOfWeek)
-				);
-				foreach ($orderedDayNames as $dayName):
-					?>
+				<?php foreach ($orderedDayNames as $dayName): ?>
                     <div class="day-name"><?= Html::encode($dayName) ?></div>
 				<?php endforeach; ?>
 
@@ -98,20 +60,29 @@ try {
 						<?php
 						$date = $cell['date'];
 						$dayNum = $cell['label'];
-						$hasEvents = $cell['hasEvents'] ?? isset($events[$date]);
-						$isActive = $cell['isSelected'] ?? ($date === $selectedDate);
-						$isToday = $cell['isToday'] ?? ($date === $todayString);
-						$class = 'day-link'
-							. ($isActive ? ' active' : '')
-							. ($hasEvents ? ' has-events' : '')
-							. ($isToday ? ' today' : '');
-						?>
-						<?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
+						$inMonth = $cell['inMonth'] ?? false;
+
+						if (!$inMonth || empty($date)):
+							// Empty cell for padding
+							?>
+                            <span class="day-link empty">&nbsp;</span>
+						<?php
+						else:
+							$hasEvents = $cell['hasEvents'] ?? isset($events[$date]);
+							$isActive = $cell['isSelected'] ?? ($date === $selectedDate);
+							$isToday = $cell['isToday'] ?? ($date === $todayString);
+							$class = 'day-link'
+								. ($isActive ? ' active' : '')
+								. ($hasEvents ? ' has-events' : '')
+								. ($isToday ? ' today' : '');
+							?>
+							<?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
 							'class' => $class,
 							'data-pjax' => 1,
 							'data-date' => $date,
 							'aria-current' => $isActive ? 'date' : null,
 						]) ?>
+						<?php endif; ?>
                     </div>
 				<?php endforeach; ?>
             </div>
