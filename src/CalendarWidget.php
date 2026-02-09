@@ -240,37 +240,31 @@ class CalendarWidget extends Widget
         return $events;
     }
 
-    protected function generateCalendarDays()
-    {
-        $tz = $this->getTimeZone();
-        $firstDayOfMonth = new DateTimeImmutable(sprintf('%04d-%02d-01', $this->year, $this->month), $tz);
-        $daysInMonth = (int)$firstDayOfMonth->format('t');
-        $startDayOfWeek = (int)$firstDayOfMonth->format('w'); // 0 (Sun) to 6 (Sat)
+	protected function generateCalendarDays()
+	{
+		$tz = $this->getTimeZone();
+		$firstDayOfMonth = new DateTimeImmutable(sprintf('%04d-%02d-01', $this->year, $this->month), $tz);
+		$daysInMonth = (int)$firstDayOfMonth->format('t');
 
-        // Adjust for firstDayOfWeek setting
-        $offset = ($startDayOfWeek - $this->firstDayOfWeek + 7) % 7;
+		$now = new DateTimeImmutable('now', $tz);
 
-        // Calculate the start date for the calendar grid (visible start cell)
-        $startDate = $firstDayOfMonth->modify(sprintf('-%d days', $offset));
+		$cells = [];
+		for ($i = 1; $i <= $daysInMonth; $i++) {
+			$cellDt = $firstDayOfMonth->modify("+".($i-1)." days");
+			$cellDate = $cellDt->format('Y-m-d');
+			$cells[] = [
+				'date' => $cellDate,
+				'label' => $i,
+				'inMonth' => true,
+				'isToday' => ($cellDate === $now->format('Y-m-d')),
+				'isSelected' => ($cellDate === $this->selectedDate),
+				'hasEvents' => false,
+			];
+		}
 
-        $now = new DateTimeImmutable('now', $tz);
+		return $cells;
+	}
 
-        $cells = [];
-        for ($i = 0; $i < 42; $i++) {
-            $cellDt = $startDate->modify("+{$i} days");
-            $cellDate = $cellDt->format('Y-m-d');
-            $cells[] = [
-                'date' => $cellDate,
-                'label' => (int)$cellDt->format('j'),
-                'inMonth' => ($cellDt->format('Y-m') === $firstDayOfMonth->format('Y-m')),
-                'isToday' => ($cellDt->format('Y-m-d') === $now->format('Y-m-d')),
-                'isSelected' => ($cellDt->format('Y-m-d') === $this->selectedDate),
-                'hasEvents' => false,
-            ];
-        }
-
-        return $cells;
-    }
 
     /**
      * Public accessor for testing to retrieve calendar days

@@ -20,143 +20,121 @@ use yii\widgets\Pjax;
 
 $monthName = DateTime::createFromFormat('!m', $month)->format('F');
 
-// Build URLs from route arrays or absolute/relative strings
 $buildUrl = static function ($base, array $params): string {
 	if (is_array($base)) {
 		return Url::to(array_merge($base, $params));
 	}
 
 	$url = Url::to($base);
-
-	// remove existing query string
 	$parts = parse_url($url);
 	$path = $parts['path'] ?? '';
 
 	return Url::to($path) . '?' . http_build_query($params);
 };
 
-
-// Prepare prev/next links
 $prevMonth = $month - 1;
 $prevYear = $year;
 if ($prevMonth < 1) {
-    $prevMonth = 12;
-    $prevYear--;
+	$prevMonth = 12;
+	$prevYear--;
 }
 
 $nextMonth = $month + 1;
 $nextYear = $year;
 if ($nextMonth > 12) {
-    $nextMonth = 1;
-    $nextYear++;
+	$nextMonth = 1;
+	$nextYear++;
 }
 
-// Prepare a DateTimeImmutable 'now' in the provided timezone for marking today
 try {
-    $now = new DateTimeImmutable('now', $timeZone ?? new DateTimeZone(date_default_timezone_get()));
-    $todayString = $now->format('Y-m-d');
+	$now = new DateTimeImmutable('now', $timeZone ?? new DateTimeZone(date_default_timezone_get()));
+	$todayString = $now->format('Y-m-d');
 } catch (\Throwable $e) {
-    $todayString = date('Y-m-d');
+	$todayString = date('Y-m-d');
 }
 
 ?>
 
 <div <?= Html::renderTagAttributes($options) ?>>
-    <?php Pjax::begin(['id' => $widgetId . '-pjax', 'enablePushState' => false, 'enableReplaceState' => true,]); ?>
-    
+	<?php Pjax::begin([
+		'id' => $widgetId . '-pjax',
+		'enablePushState' => false,
+		'enableReplaceState' => true,
+	]); ?>
+
     <div class="row">
         <!-- Calendar Grid Column -->
         <div class="col-md-7 border-end">
             <div class="calendar-header d-flex justify-content-between align-items-center mb-4">
                 <h3 class="fw-light mb-0"><?= Html::encode($monthName) ?> <?= $year ?></h3>
                 <div class="nav-controls">
-                    <?= Html::a('&lt;', $buildUrl($navUrl, ['month' => $prevMonth, 'year' => $prevYear]), [
-                        'class' => 'calendar-nav-btn',
-                        'data-pjax' => 1,
-                        'aria-label' => 'Previous month',
-                    ]) ?>
-                    <?= Html::a('&gt;', $buildUrl($navUrl, ['month' => $nextMonth, 'year' => $nextYear]), [
-                        'class' => 'calendar-nav-btn',
-                        'data-pjax' => 1,
-                        'aria-label' => 'Next month',
-                    ]) ?>
+					<?= Html::a('&lt;', $buildUrl($navUrl, ['month' => $prevMonth, 'year' => $prevYear]), [
+						'class' => 'calendar-nav-btn',
+						'data-pjax' => 1,
+						'aria-label' => 'Previous month',
+					]) ?>
+					<?= Html::a('&gt;', $buildUrl($navUrl, ['month' => $nextMonth, 'year' => $nextYear]), [
+						'class' => 'calendar-nav-btn',
+						'data-pjax' => 1,
+						'aria-label' => 'Next month',
+					]) ?>
                 </div>
             </div>
 
             <div class="calendar-grid">
-                <?php 
-            // Reorder day names based on firstDayOfWeek
-            $orderedDayNames = array_merge(
-                array_slice($dayNames, $firstDayOfWeek),
-                array_slice($dayNames, 0, $firstDayOfWeek)
-            );
-            foreach ($orderedDayNames as $dayName): 
-            ?>
-                <div class="day-name"><?= Html::encode($dayName) ?></div>
-            <?php endforeach; ?>
+				<?php
+				// Reorder day names based on firstDayOfWeek
+				$orderedDayNames = array_merge(
+					array_slice($dayNames, $firstDayOfWeek),
+					array_slice($dayNames, 0, $firstDayOfWeek)
+				);
+				foreach ($orderedDayNames as $dayName):
+					?>
+                    <div class="day-name"><?= Html::encode($dayName) ?></div>
+				<?php endforeach; ?>
 
-                <?php foreach ($days as $cell): ?>
+				<?php foreach ($days as $cell): ?>
                     <div class="day-number">
-                        <?php if ($cell && is_array($cell) && isset($cell['date'])): ?>
-                            <?php
-                                $date = $cell['date'];
-                                $dayNum = $cell['label'] ?? (int)substr($date, -2);
-                                $hasEvents = $cell['hasEvents'] ?? isset($events[$date]);
-                                $isActive = $cell['isSelected'] ?? ($date === $selectedDate);
-                                $isToday = $cell['isToday'] ?? ($date === $todayString);
-                                $class = 'day-link' . ($isActive ? ' active' : '') . ($hasEvents ? ' has-events' : '') . ($isToday ? ' today' : '');
-                            ?>
-                            <?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
-                                'class' => $class,
-                                'data-pjax' => 1,
-                                'data-date' => $date,
-                                'aria-current' => $isActive ? 'date' : null,
-                            ]) ?>
-                        <?php elseif (is_string($cell) && $cell !== ''): ?>
-                            <?php // backward compat: string date ?>
-                            <?php
-                                $date = $cell;
-                                try {
-                                    $dt = new DateTimeImmutable($date, $timeZone ?? new DateTimeZone(date_default_timezone_get()));
-                                    $dayNum = (int)$dt->format('d');
-                                } catch (\Throwable $e) {
-                                    $dayNum = (int)substr($date, -2);
-                                }
-                                $hasEvents = isset($events[$date]);
-                                $isActive = ($date === $selectedDate);
-                                $isToday = ($date === $todayString);
-                                $class = 'day-link' . ($isActive ? ' active' : '') . ($hasEvents ? ' has-events' : '') . ($isToday ? ' today' : '');
-                            ?>
-                            <?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
-                                'class' => $class,
-                                'data-pjax' => 1,
-                                'data-date' => $date,
-                                'aria-current' => $isActive ? 'date' : null,
-                            ]) ?>
-                        <?php endif; ?>
+						<?php
+						$date = $cell['date'];
+						$dayNum = $cell['label'];
+						$hasEvents = $cell['hasEvents'] ?? isset($events[$date]);
+						$isActive = $cell['isSelected'] ?? ($date === $selectedDate);
+						$isToday = $cell['isToday'] ?? ($date === $todayString);
+						$class = 'day-link'
+							. ($isActive ? ' active' : '')
+							. ($hasEvents ? ' has-events' : '')
+							. ($isToday ? ' today' : '');
+						?>
+						<?= Html::a($dayNum, $buildUrl($viewUrl, ['month' => $month, 'year' => $year, 'date' => $date]), [
+							'class' => $class,
+							'data-pjax' => 1,
+							'data-date' => $date,
+							'aria-current' => $isActive ? 'date' : null,
+						]) ?>
                     </div>
-                <?php endforeach; ?>
+				<?php endforeach; ?>
             </div>
         </div>
 
         <!-- Event List Column -->
         <div class="col-md-5 ps-md-4">
             <div class="event-list">
-                <?php if (isset($events[$selectedDate])): ?>
+				<?php if (isset($events[$selectedDate])): ?>
                     <ul class="list-unstyled mb-0">
-                        <?php foreach ($events[$selectedDate] as $event): ?>
+						<?php foreach ($events[$selectedDate] as $event): ?>
                             <li class="event-item d-flex align-items-baseline">
                                 <div class="event-time me-3"><?= Html::encode($event['time']) ?></div>
                                 <div class="event-title"><?= Html::encode($event['title']) ?></div>
                             </li>
-                        <?php endforeach; ?>
+						<?php endforeach; ?>
                     </ul>
-                <?php else: ?>
+				<?php else: ?>
                     <p class="text-muted italic py-3">No events scheduled for this day.</p>
-                <?php endif; ?>
+				<?php endif; ?>
             </div>
         </div>
     </div>
 
-    <?php Pjax::end(); ?>
+	<?php Pjax::end(); ?>
 </div>
