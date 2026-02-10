@@ -144,8 +144,9 @@ class CalendarWidget extends Widget
 	/**
 	 * @var array Array of custom celebration days.
 	 * Can contain:
-	 * - Full dates in 'Y-m-d' format (e.g., '2025-01-01')
-	 * - Recurring dates in 'm-d' format (e.g., '08-20')
+	 * - Simple values: ['2025-01-01', '08-20']
+	 * - Associative values with titles: ['2025-01-01' => 'New Year', '08-20' => 'My Birthday']
+	 * Supported formats: 'Y-m-d' (e.g., '2025-01-01') or recurring 'm-d' (e.g., '08-20').
 	 */
 	public $celebrations = [];
 
@@ -533,73 +534,95 @@ class CalendarWidget extends Widget
 	 */
 	protected function getEvents()
 	{
-		if (!$this->query) {
-			return [];
-		}
-
 		$tz = $this->getTimeZone();
-		$start = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $this->year, $this->month), $tz);
-		$endExclusive = $start->modify('+1 month');
+		$events = [];
 
-		if ($this->dateIsTimestamp) {
-			$startDate = $start->getTimestamp();
-			$endDateExclusive = $endExclusive->getTimestamp();
-		} else {
-			$startDate = $start->format('Y-m-d H:i:s');
-			$endDateExclusive = $endExclusive->format('Y-m-d H:i:s');
+		if ($this->query) {
+			$start = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $this->year, $this->month), $tz);
+			$endExclusive = $start->modify('+1 month');
+
+			if ($this->dateIsTimestamp) {
+				$startDate = $start->getTimestamp();
+				$endDateExclusive = $endExclusive->getTimestamp();
+			} else {
+				$startDate = $start->format('Y-m-d H:i:s');
+				$endDateExclusive = $endExclusive->format('Y-m-d H:i:s');
+			}
+
+			$models = (clone $this->query)
+				->andWhere(['>=', $this->dateAttribute, $startDate])
+				->andWhere(['<', $this->dateAttribute, $endDateExclusive])
+				->orderBy([$this->timeAttribute => SORT_ASC])
+				->all();
+
+			foreach ($models as $model) {
+				$dateValue = ArrayHelper::getValue($model, $this->dateAttribute);
+				$timeValue = ArrayHelper::getValue($model, $this->timeAttribute);
+
+				// Parse date value
+				if (is_numeric($dateValue)) {
+					$dateDt = (new DateTimeImmutable('@' . (int)$dateValue))->setTimezone($tz);
+				} else {
+					$dateDt = DateTimeImmutable::createFromFormat('!Y-m-d', (string)$dateValue, $tz);
+					if ($dateDt === false) {
+						try {
+							$dateDt = new DateTimeImmutable((string)$dateValue, $tz);
+						} catch (\Throwable $e) {
+							continue;
+						}
+					}
+				}
+
+				// Parse time value
+				if (is_numeric($timeValue)) {
+					$timeDt = (new DateTimeImmutable('@' . (int)$timeValue))->setTimezone($tz);
+				} else {
+					// Time may be H:i or full datetime; try H:i first
+					$timeDt = DateTimeImmutable::createFromFormat('!H:i', (string)$timeValue, $tz);
+					if ($timeDt === false) {
+						try {
+							$timeDt = new DateTimeImmutable((string)$timeValue, $tz);
+						} catch (\Throwable $e) {
+							// fallback to midnight
+							$timeDt = $dateDt->setTime(0, 0);
+						}
+					}
+				}
+
+				// Normalize date to Y-m-d for grouping
+				$date = $dateDt->format('Y-m-d');
+				// Normalize time to H:i for display
+				$time = $timeDt->format('H:i');
+
+				$events[$date][] = [
+					'time' => $time,
+					'title' => ArrayHelper::getValue($model, $this->titleAttribute),
+					'model' => $model, // Keep reference to raw model for custom rendering
+				];
+			}
 		}
 
-		$models = (clone $this->query)
-			->andWhere(['>=', $this->dateAttribute, $startDate])
-			->andWhere(['<', $this->dateAttribute, $endDateExclusive])
-			->orderBy([$this->timeAttribute => SORT_ASC])
-			->all();
-
-		$events = [];
-		foreach ($models as $model) {
-			$dateValue = ArrayHelper::getValue($model, $this->dateAttribute);
-			$timeValue = ArrayHelper::getValue($model, $this->timeAttribute);
-
-			// Parse date value
-			if (is_numeric($dateValue)) {
-				$dateDt = (new DateTimeImmutable('@' . (int)$dateValue))->setTimezone($tz);
-			} else {
-				$dateDt = DateTimeImmutable::createFromFormat('!Y-m-d', (string)$dateValue, $tz);
-				if ($dateDt === false) {
-					try {
-						$dateDt = new DateTimeImmutable((string)$dateValue, $tz);
-					} catch (\Throwable $e) {
-						continue;
-					}
+		// Merge celebrations for the current month into the event list
+		$firstDay = new DateTimeImmutable(sprintf('%04d-%02d-01', $this->year, $this->month), $tz);
+		$daysInMonth = (int)$firstDay->format('t');
+		for ($i = 1; $i <= $daysInMonth; $i++) {
+			$cellDate = sprintf('%04d-%02d-%02d', $this->year, $this->month, $i);
+			$celebrationTitle = $this->getCelebrationInfo($cellDate);
+			if ($celebrationTitle !== null) {
+				// We use 'Celebration' or 'All Day' as time for celebrations
+				// Let's put them at the beginning of the list for that day
+				$celebrationEvent = [
+					'time' => '', // Empty time for all-day celebrations
+					'title' => $celebrationTitle,
+					'model' => null,
+					'isCelebration' => true,
+				];
+				if (!isset($events[$cellDate])) {
+					$events[$cellDate] = [$celebrationEvent];
+				} else {
+					array_unshift($events[$cellDate], $celebrationEvent);
 				}
 			}
-
-			// Parse time value
-			if (is_numeric($timeValue)) {
-				$timeDt = (new DateTimeImmutable('@' . (int)$timeValue))->setTimezone($tz);
-			} else {
-				// Time may be H:i or full datetime; try H:i first
-				$timeDt = DateTimeImmutable::createFromFormat('!H:i', (string)$timeValue, $tz);
-				if ($timeDt === false) {
-					try {
-						$timeDt = new DateTimeImmutable((string)$timeValue, $tz);
-					} catch (\Throwable $e) {
-						// fallback to midnight
-						$timeDt = $dateDt->setTime(0, 0);
-					}
-				}
-			}
-
-			// Normalize date to Y-m-d for grouping
-			$date = $dateDt->format('Y-m-d');
-			// Normalize time to H:i for display
-			$time = $timeDt->format('H:i');
-
-			$events[$date][] = [
-				'time' => $time,
-				'title' => ArrayHelper::getValue($model, $this->titleAttribute),
-				'model' => $model, // Keep reference to raw model for custom rendering
-			];
 		}
 
 		return $events;
@@ -672,6 +695,7 @@ class CalendarWidget extends Widget
 			$dayOfWeekInGrid = $gridPosition % 7;
 			$actualDayOfWeek = ($dayOfWeekInGrid + $this->firstDayOfWeek) % 7;
 			
+			$isCelebration = $this->isCelebrationDay($cellDate);
 			$cells[] = [
 				'date' => $cellDate,
 				'label' => $i,
@@ -682,7 +706,8 @@ class CalendarWidget extends Widget
 				'isWeekend' => ($actualDayOfWeek === 0 || $actualDayOfWeek === 6),
 				'isSaturday' => ($actualDayOfWeek === 6),
 				'isSunday' => ($actualDayOfWeek === 0),
-				'isCelebration' => $this->isCelebrationDay($cellDate),
+				'isCelebration' => $isCelebration,
+				'celebrationTitle' => $isCelebration ? $this->getCelebrationInfo($cellDate) : null,
 				'dayOfWeek' => $dayOfWeekInGrid,
 			];
 			$gridPosition++;
@@ -694,26 +719,45 @@ class CalendarWidget extends Widget
 	/**
 	 * Checks if a date is a celebration day.
 	 *
-	 * Supports full 'Y-m-d' or recurring 'm-d' formats in $celebrations array.
-	 *
 	 * @param string $date Date in Y-m-d format
 	 * @return bool True if the date is in the celebrations list
 	 */
 	protected function isCelebrationDay(string $date): bool
 	{
+		return $this->getCelebrationInfo($date) !== null;
+	}
+
+	/**
+	 * Retrieves the title for a celebration day, if any.
+	 *
+	 * Supports both simple and associative array formats in $celebrations.
+	 *
+	 * @param string $date Date in Y-m-d format
+	 * @return string|null The celebration title or generic boolean true (as string) if it's a celebration without title
+	 */
+	protected function getCelebrationInfo(string $date): ?string
+	{
 		if (empty($this->celebrations)) {
-			return false;
+			return null;
 		}
 
 		$monthDay = substr($date, 5); // Extract 'm-d'
 
-		foreach ($this->celebrations as $celebration) {
-			if ($celebration === $date || $celebration === $monthDay) {
-				return true;
+		foreach ($this->celebrations as $key => $value) {
+			// Handle associative array: ['Y-m-d' => 'Title'] or ['m-d' => 'Title']
+			if (is_string($key)) {
+				if ($key === $date || $key === $monthDay) {
+					return (string)$value;
+				}
+			} else {
+				// Handle simple array: ['Y-m-d', 'm-d']
+				if ($value === $date || $value === $monthDay) {
+					return ''; // Celebration exists but has no title
+				}
 			}
 		}
 
-		return false;
+		return null;
 	}
 
 	/**

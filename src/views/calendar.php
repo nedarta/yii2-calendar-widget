@@ -93,6 +93,7 @@ use yii\widgets\Pjax;
 							'class' => $class,
 							'data-pjax' => 1,
 							'data-date' => $date,
+							'title' => $cell['celebrationTitle'] ?? null,
 							'aria-current' => $isActive ? 'date' : null,
 						]) ?>
 						<?php endif; ?>
@@ -107,7 +108,16 @@ use yii\widgets\Pjax;
 				<?php if (isset($events[$selectedDate])): ?>
                     <ul class="list-unstyled mb-0">
 						<?php foreach ($events[$selectedDate] as $event): ?>
-                            <?php if (isset($eventRender) && $eventRender instanceof \Closure): ?>
+                            <?php if (!empty($event['isCelebration'])): ?>
+                                <li class="event-item celebration-item d-flex align-items-baseline">
+                                    <div class="event-time me-3">
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    </div>
+                                    <div class="event-title fw-bold">
+                                        <?= !empty($event['title']) ? Html::encode($event['title']) : 'Celebration' ?>
+                                    </div>
+                                </li>
+                            <?php elseif (isset($eventRender) && $eventRender instanceof \Closure): ?>
                                 <?= $eventRender($event['model'], $this->context) ?>
                             <?php else: ?>
                                 <li class="event-item d-flex align-items-baseline">

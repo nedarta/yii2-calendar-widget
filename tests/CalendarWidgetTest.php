@@ -607,5 +607,50 @@ class CalendarWidgetTest extends TestCase
         $this->assertArrayHasKey('model', $eventsData['2025-01-01'][0]);
         $this->assertEquals('Test Event', $eventsData['2025-01-01'][0]['model']->title);
     }
+
+    public function testCelebrationInfo()
+    {
+        $widget = new CalendarWidget([
+            'celebrations' => [
+                '2025-01-01' => 'New Year',
+                '01-05',
+                '1984-08-20' => 'My Birthday',
+                '02-20' => 'Recurring Celebration',
+            ],
+        ]);
+        $widget->init();
+
+        $reflection = new \ReflectionClass($widget);
+        $method = $reflection->getMethod('getCelebrationInfo');
+        $method->setAccessible(true);
+
+        $this->assertEquals('New Year', $method->invoke($widget, '2025-01-01'));
+        $this->assertEquals('', $method->invoke($widget, '2025-01-05'));
+        $this->assertEquals('My Birthday', $method->invoke($widget, '1984-08-20'));
+        $this->assertNull($method->invoke($widget, '2024-08-20')); // Not recurring because full date used
+        $this->assertEquals('Recurring Celebration', $method->invoke($widget, '2025-02-20')); // Recurring
+        $this->assertNull($method->invoke($widget, '2025-01-02'));
+    }
+
+    public function testGetEventsIncludesCelebrations()
+    {
+        $widget = new CalendarWidget([
+            'month' => 1,
+            'year' => 2025,
+            'celebrations' => [
+                '2025-01-01' => 'New Year',
+            ],
+        ]);
+        $widget->init();
+
+        $reflection = new \ReflectionClass($widget);
+        $method = $reflection->getMethod('getEvents');
+        $method->setAccessible(true);
+        $events = $method->invoke($widget);
+
+        $this->assertArrayHasKey('2025-01-01', $events);
+        $this->assertEquals('New Year', $events['2025-01-01'][0]['title']);
+        $this->assertTrue($events['2025-01-01'][0]['isCelebration']);
+    }
 }
 
