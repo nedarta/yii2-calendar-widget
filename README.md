@@ -8,6 +8,8 @@ A premium, modern, and AJAX-powered calendar widget for Yii2 Framework and Boots
 
 - **ActiveRecord Integration**: Easily bind the widget to any `ActiveQuery`.
 - **AJAX-Powered**: Month switching and day selection use `Pjax` for a seamless experience.
+- **Localization (Intl)**: Automatic translation of month and day names using PHP's `intl` extension.
+- **Custom Celebrations**: Highlight holidays or special dates with custom styling.
 - **Bootstrap 5**: Native support for Bootstrap 5 layout and styling.
 - **Rich Interaction**: Days with events are highlighted with a status dot.
 - **Flexible Attributes**: Supports dot-notation for relations (e.g., `event.name`) and single `datetime` columns.
@@ -92,13 +94,28 @@ echo CalendarWidget::widget([
 
 ### Localization & Internationalization
 
-Customize day names and the first day of the week:
+The widget uses PHP's `intl` extension to automatically localize month and day names. You can specify the language via the `language` property:
 
 ```php
 echo CalendarWidget::widget([
     'query' => Event::find(),
-    'dayNames' => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    'language' => 'lv-LV', // e.g., Latvian
     'firstDayOfWeek' => 1, // 0 = Sunday, 1 = Monday, etc.
+]);
+```
+
+### Marking Celebration Days
+
+You can highlight specific dates (e.g., holidays, birthdays) using the `celebrations` array. It supports both fixed dates (`Y-m-d`) and recurring dates (`m-d`):
+
+```php
+echo CalendarWidget::widget([
+    'query' => Event::find(),
+    'celebrations' => [
+        '2025-01-01', // Fixed date
+        '05-04',      // Recurring yearly (May 4th)
+        '11-18',      // Recurring yearly (Nov 18th)
+    ],
 ]);
 ```
 
@@ -118,13 +135,17 @@ echo CalendarWidget::widget([
 
 ## Styling
 
-The widget uses standard Bootstrap 5 classes and a minimal custom CSS file. 
+The widget uses standard Bootstrap 5 classes and includes a custom CSS file with specific classes for Saturdays, Sundays, and celebrations:
+
+- `.saturday`: Applied to Saturday cells (default: blue text).
+- `.sunday`: Applied to Sunday cells (default: red text).
+- `.celebration`: Applied to cells defined in the `celebrations` array.
 
 To override styles, you can point to your own CSS in your application's asset bundle or use the widget within a themed container.
 
 ## Testing
 
-This package includes a comprehensive PHPUnit test suite with 21 test cases covering all major functionality.
+This package includes a comprehensive PHPUnit test suite with 27 test cases covering all major functionality.
 
 ### Running Tests
 
@@ -149,10 +170,13 @@ The test suite includes:
 - Calendar day generation (including leap years)
 - Event retrieval and formatting
 - Navigation URL handling
+- **Localization (Intl)**
+- **Celebration day markers**
+- **Weekend flag detection**
 - Custom attribute support
 - Edge cases and boundary conditions
 
-All tests are passing with 80+ assertions ensuring reliable functionality.
+All tests are passing with 110+ assertions ensuring reliable functionality.
 
 ## License
 
