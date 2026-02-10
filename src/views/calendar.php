@@ -51,14 +51,25 @@ use yii\widgets\Pjax;
             </div>
 
             <div class="calendar-grid">
-				<?php foreach ($orderedDayNames as $index => $dayName): ?>
-                    <div class="day-name<?= ($index === 0 || $index === 6) ? ' weekend' : '' ?>" data-day="<?= $index ?>">
+				<?php foreach ($orderedDayNames as $index => $dayName):
+					$dayOfWeekInGrid = $index % 7;
+					$actualDayOfWeek = ($dayOfWeekInGrid + $firstDayOfWeek) % 7;
+					$classes = 'day-name';
+					if ($actualDayOfWeek === 6) $classes .= ' saturday';
+					if ($actualDayOfWeek === 0) $classes .= ' sunday';
+					?>
+                    <div class="<?= $classes ?>" data-day="<?= $index ?>">
 						<?= Html::encode($dayName) ?>
                     </div>
 				<?php endforeach; ?>
 
-				<?php foreach ($days as $cell): ?>
-                    <div class="day-number<?= !empty($cell['isWeekend']) ? ' weekend' : '' ?>" data-day="<?= $cell['dayOfWeek'] ?? '' ?>">
+				<?php foreach ($days as $cell):
+					$classes = 'day-number';
+					if (!empty($cell['isSaturday'])) $classes .= ' saturday';
+					if (!empty($cell['isSunday'])) $classes .= ' sunday';
+					if (!empty($cell['isCelebration'])) $classes .= ' celebration';
+					?>
+                    <div class="<?= $classes ?>" data-day="<?= $cell['dayOfWeek'] ?? '' ?>">
 						<?php
 						$date = $cell['date'];
 						$dayNum = $cell['label'];

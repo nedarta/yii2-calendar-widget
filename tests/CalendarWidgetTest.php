@@ -432,5 +432,101 @@ class CalendarWidgetTest extends TestCase
 
         $this->assertEquals('2026-03-15', $widget->selectedDate);
     }
+
+    public function testLanguageSupport()
+    {
+        $widget = new CalendarWidget(['language' => 'lv-LV']);
+        $widget->init();
+        $this->assertEquals('lv-LV', $widget->language);
+    }
+
+    public function testIntlLocalization()
+    {
+        if (!class_exists('IntlDateFormatter')) {
+            $this->markTestSkipped('Intl extension not available');
+        }
+
+        // Test Latvian (months: Janvāris, Februāris, etc.)
+        $widgetLv = new CalendarWidget(['month' => 1, 'year' => 2025, 'language' => 'lv-LV']);
+        $widgetLv->init();
+        
+        $reflection = new \ReflectionClass($widgetLv);
+        $method = $reflection->getMethod('getMonthName');
+        $method->setAccessible(true);
+        
+        $this->assertEquals('janvāris', mb_strtolower($method->invoke($widgetLv)));
+
+        // Test day names in Latvian
+        $dayNamesMethod = $reflection->getMethod('getOrderedDayNames');
+        $dayNamesMethod->setAccessible(true);
+        $names = $dayNamesMethod->invoke($widgetLv);
+        
+        // Jan 2025 starts on Wed. If 0 (Sun) is first day: Svētd. Pirmd. Otrd. Trešd. Ceturtd. Piektd. Sestd.
+        // ccc format for 'lv' should be something like 'Pirmd.'
+        $this->assertContains('Pirmd.', $names);
+    }
+
+    public function testCelebrationDays()
+    {
+        $widget = new CalendarWidget([
+            'month' => 1,
+            'year' => 2025,
+            'celebrations' => [
+                '2025-01-01', // New Year
+                '01-05',      // Recurring example
+            ],
+        ]);
+        $widget->init();
+
+        $days = $widget->getCalendarDays();
+        
+        $newYearCell = null;
+        $recurringCell = null;
+        foreach ($days as $cell) {
+            if ($cell['date'] === '2025-01-01') $newYearCell = $cell;
+            if ($cell['date'] === '2025-01-05') $recurringCell = $cell;
+        }
+
+        $this->assertTrue($newYearCell['isCelebration']);
+        $this->assertTrue($recurringCell['isCelebration']);
+        
+        // Assert other days are NOT celebrations
+        foreach ($days as $cell) {
+            if ($cell['date'] !== '2025-01-01' && $cell['date'] !== '2025-01-05' && !empty($cell['date'])) {
+                $this->assertFalse($cell['isCelebration'], "Day " . $cell['date'] . " should not be a celebration");
+            }
+        }
+    }
+
+    public function testWeekendFlags()
+    {
+        $widget = new CalendarWidget([
+            'month' => 1,
+            'year' => 2025, // Jan 1 is Wed
+            'firstDayOfWeek' => 0, // Sun start
+        ]);
+        $widget->init();
+
+        $days = $widget->getCalendarDays();
+        
+        // Jan 4 (Sat), Jan 5 (Sun)
+        foreach ($days as $cell) {
+            if ($cell['date'] === '2025-01-04') {
+                $this->assertTrue($cell['isSaturday']);
+                $this->assertFalse($cell['isSunday']);
+                $this->assertTrue($cell['isWeekend']);
+            }
+            if ($cell['date'] === '2025-01-05') {
+                $this->assertFalse($cell['isSaturday']);
+                $this->assertTrue($cell['isSunday']);
+                $this->assertTrue($cell['isWeekend']);
+            }
+            if ($cell['date'] === '2025-01-01') { // Wed
+                $this->assertFalse($cell['isSaturday']);
+                $this->assertFalse($cell['isSunday']);
+                $this->assertFalse($cell['isWeekend']);
+            }
+        }
+    }
 }
 

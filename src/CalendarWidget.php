@@ -136,6 +136,20 @@ class CalendarWidget extends Widget
 	public $firstDayOfWeek = 0;
 
 	/**
+	 * @var string|null The language to use for localized content (e.g., 'lv', 'en-US').
+	 * If null, defaults to Yii::$app->language.
+	 */
+	public $language;
+
+	/**
+	 * @var array Array of custom celebration days.
+	 * Can contain:
+	 * - Full dates in 'Y-m-d' format (e.g., '2025-01-01')
+	 * - Recurring dates in 'm-d' format (e.g., '08-20')
+	 */
+	public $celebrations = [];
+
+	/**
 	 * @var array HTML attributes for the widget's container element.
 	 * Default class is 'calendar-widget shadow-sm p-4'.
 	 * Default id is '{widgetId}-container'.
@@ -155,6 +169,8 @@ class CalendarWidget extends Widget
 	public function init()
 	{
 		parent::init();
+
+		$this->language = $this->language ?? (isset(Yii::$app) ? Yii::$app->language : 'en-US');
 
 		$tz = $this->getTimeZone();
 		$now = new DateTimeImmutable('now', $tz);
@@ -297,6 +313,26 @@ class CalendarWidget extends Widget
 	 */
 	protected function getMonthName(): string
 	{
+		$locale = $this->language;
+		$tz = $this->getTimeZone()->getName();
+
+		try {
+			if (class_exists('IntlDateFormatter')) {
+				$formatter = new \IntlDateFormatter(
+					$locale,
+					\IntlDateFormatter::NONE,
+					\IntlDateFormatter::NONE,
+					$tz,
+					\IntlDateFormatter::GREGORIAN,
+					'LLLL' // Localized full month name (Stand-alone)
+				);
+				$dt = DateTime::createFromFormat('!Y-m', "$this->year-$this->month");
+				return $formatter->format($dt);
+			}
+		} catch (\Throwable $e) {
+			// fallthrough
+		}
+
 		return DateTime::createFromFormat('!m', $this->month)->format('F');
 	}
 
@@ -357,15 +393,48 @@ class CalendarWidget extends Widget
 	}
 
 	/**
-	 * Gets day names reordered according to firstDayOfWeek setting.
+	 * Gets reordered day names according to firstDayOfWeek setting.
+	 *
+	 * Uses IntlDateFormatter if possible to provide localized day names.
 	 *
 	 * @return array Reordered array of day names
 	 */
 	protected function getOrderedDayNames(): array
 	{
+		$names = [];
+		$locale = $this->language;
+		$tz = $this->getTimeZone()->getName();
+
+		try {
+			if (class_exists('IntlDateFormatter')) {
+				$formatter = new \IntlDateFormatter(
+					$locale,
+					\IntlDateFormatter::NONE,
+					\IntlDateFormatter::NONE,
+					$tz,
+					\IntlDateFormatter::GREGORIAN,
+					'ccc' // Localized abbreviated day name (Sun, Mon, etc.)
+				);
+				
+				// Standard weekend order: 0=Sun ... 6=Sat
+				// We need to generate names for all 7 days
+				// 2024-01-07 was a Sunday
+				for ($i = 0; $i < 7; $i++) {
+					$dt = new DateTimeImmutable("2024-01-07 +$i days");
+					$names[$i] = $formatter->format($dt);
+				}
+			}
+		} catch (\Throwable $e) {
+			// fallthrough to default
+		}
+
+		if (empty($names)) {
+			$names = $this->dayNames;
+		}
+
 		return array_merge(
-			array_slice($this->dayNames, $this->firstDayOfWeek),
-			array_slice($this->dayNames, 0, $this->firstDayOfWeek)
+			array_slice($names, $this->firstDayOfWeek),
+			array_slice($names, 0, $this->firstDayOfWeek)
 		);
 	}
 
@@ -514,15 +583,14 @@ class CalendarWidget extends Widget
 		$firstDayOfWeek = (int)$firstDayOfMonth->format('w');
 
 		// Calculate how many empty cells we need at the start
-		// Adjust for the configured first day of week
 		$paddingDays = ($firstDayOfWeek - $this->firstDayOfWeek + 7) % 7;
 
-		// Track position in grid for weekend detection
 		$gridPosition = 0;
 
 		// Add empty cells at the beginning
 		for ($i = 0; $i < $paddingDays; $i++) {
-			$dayOfWeek = $gridPosition % 7;
+			$dayOfWeekInGrid = $gridPosition % 7;
+			$actualDayOfWeek = ($dayOfWeekInGrid + $this->firstDayOfWeek) % 7;
 			$cells[] = [
 				'date' => '',
 				'label' => '',
@@ -530,8 +598,11 @@ class CalendarWidget extends Widget
 				'isToday' => false,
 				'isSelected' => false,
 				'hasEvents' => false,
-				'isWeekend' => $this->isWeekendDay($dayOfWeek),
-				'dayOfWeek' => $dayOfWeek,
+				'isWeekend' => ($actualDayOfWeek === 0 || $actualDayOfWeek === 6),
+				'isSaturday' => ($actualDayOfWeek === 6),
+				'isSunday' => ($actualDayOfWeek === 0),
+				'isCelebration' => false,
+				'dayOfWeek' => $dayOfWeekInGrid,
 			];
 			$gridPosition++;
 		}
@@ -540,7 +611,9 @@ class CalendarWidget extends Widget
 		for ($i = 1; $i <= $daysInMonth; $i++) {
 			$cellDt = $firstDayOfMonth->modify("+".($i-1)." days");
 			$cellDate = $cellDt->format('Y-m-d');
-			$dayOfWeek = $gridPosition % 7;
+			$dayOfWeekInGrid = $gridPosition % 7;
+			$actualDayOfWeek = ($dayOfWeekInGrid + $this->firstDayOfWeek) % 7;
+			
 			$cells[] = [
 				'date' => $cellDate,
 				'label' => $i,
@@ -548,13 +621,41 @@ class CalendarWidget extends Widget
 				'isToday' => ($cellDate === $now->format('Y-m-d')),
 				'isSelected' => ($cellDate === $this->selectedDate),
 				'hasEvents' => false,
-				'isWeekend' => $this->isWeekendDay($dayOfWeek),
-				'dayOfWeek' => $dayOfWeek,
+				'isWeekend' => ($actualDayOfWeek === 0 || $actualDayOfWeek === 6),
+				'isSaturday' => ($actualDayOfWeek === 6),
+				'isSunday' => ($actualDayOfWeek === 0),
+				'isCelebration' => $this->isCelebrationDay($cellDate),
+				'dayOfWeek' => $dayOfWeekInGrid,
 			];
 			$gridPosition++;
 		}
 
 		return $cells;
+	}
+
+	/**
+	 * Checks if a date is a celebration day.
+	 *
+	 * Supports full 'Y-m-d' or recurring 'm-d' formats in $celebrations array.
+	 *
+	 * @param string $date Date in Y-m-d format
+	 * @return bool True if the date is in the celebrations list
+	 */
+	protected function isCelebrationDay(string $date): bool
+	{
+		if (empty($this->celebrations)) {
+			return false;
+		}
+
+		$monthDay = substr($date, 5); // Extract 'm-d'
+
+		foreach ($this->celebrations as $celebration) {
+			if ($celebration === $date || $celebration === $monthDay) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
