@@ -9,6 +9,7 @@ A premium, modern, and AJAX-powered calendar widget for Yii2 Framework and Boots
 - **ActiveRecord Integration**: Easily bind the widget to any `ActiveQuery`.
 - **AJAX-Powered**: Month switching and day selection use `Pjax` for a seamless experience.
 - **Localization (Intl)**: Automatic translation of month and day names using PHP's `intl` extension.
+- **Dynamic Day Names**: Choose between narrow, short, abbreviated, or full day names.
 - **Custom Celebrations**: Highlight holidays or special dates with custom styling.
 - **Bootstrap 5**: Native support for Bootstrap 5 layout and styling.
 - **Rich Interaction**: Days with events are highlighted with a status dot.
@@ -94,15 +95,22 @@ echo CalendarWidget::widget([
 
 ### Localization & Internationalization
 
-The widget uses PHP's `intl` extension to automatically localize month and day names. You can specify the language via the `language` property:
+The widget uses PHP's `intl` extension to automatically localize month and day names. You can specify the language and the format of day names:
 
 ```php
 echo CalendarWidget::widget([
     'query' => Event::find(),
-    'language' => 'lv-LV', // e.g., Latvian
-    'firstDayOfWeek' => 1, // 0 = Sunday, 1 = Monday, etc.
+    'language' => 'lv-LV',      // language code
+    'dayNameFormat' => 'short',  // 'narrow', 'short', 'abbr', or 'full'
+    'firstDayOfWeek' => 1,       // 0 = Sunday, 1 = Monday, etc.
 ]);
 ```
+
+#### Supported Day Name Formats:
+- `narrow`: Single letter (e.g., 'P')
+- `short`: Two letters (e.g., 'Pr')
+- `abbr`: Abbreviated (e.g., 'Pirmd.') - **Default**
+- `full`: Full name (e.g., 'Pirmdiena')
 
 ### Marking Celebration Days
 
@@ -145,7 +153,7 @@ To override styles, you can point to your own CSS in your application's asset bu
 
 ## Testing
 
-This package includes a comprehensive PHPUnit test suite with 27 test cases covering all major functionality.
+This package includes a comprehensive PHPUnit test suite with 28 test cases covering all major functionality.
 
 ### Running Tests
 
@@ -171,12 +179,13 @@ The test suite includes:
 - Event retrieval and formatting
 - Navigation URL handling
 - **Localization (Intl)**
+- **Day name format options**
 - **Celebration day markers**
 - **Weekend flag detection**
 - Custom attribute support
 - Edge cases and boundary conditions
 
-All tests are passing with 110+ assertions ensuring reliable functionality.
+All tests are passing with 115+ assertions ensuring reliable functionality.
 
 ## License
 

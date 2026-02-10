@@ -150,6 +150,16 @@ class CalendarWidget extends Widget
 	public $celebrations = [];
 
 	/**
+	 * @var string The format/length of localized day names.
+	 * Supported values:
+	 * - 'narrow': Single letter (e.g., 'P')
+	 * - 'short': Two letters (e.g., 'Pr')
+	 * - 'abbr': Abbreviated (e.g., 'Pirmd.') - Default
+	 * - 'full': Full name (e.g., 'Pirmdiena')
+	 */
+	public $dayNameFormat = 'abbr';
+
+	/**
 	 * @var array HTML attributes for the widget's container element.
 	 * Default class is 'calendar-widget shadow-sm p-4'.
 	 * Default id is '{widgetId}-container'.
@@ -234,6 +244,11 @@ class CalendarWidget extends Widget
 		$this->firstDayOfWeek = (int)$this->firstDayOfWeek;
 		if ($this->firstDayOfWeek < 0 || $this->firstDayOfWeek > 6) {
 			$this->firstDayOfWeek = 0;
+		}
+
+		$allowedFormats = ['narrow', 'short', 'abbr', 'full'];
+		if (!in_array($this->dayNameFormat, $allowedFormats)) {
+			$this->dayNameFormat = 'abbr';
 		}
 
 		// Normalize selectedDate using resolved timezone
@@ -327,7 +342,10 @@ class CalendarWidget extends Widget
 					'LLLL' // Localized full month name (Stand-alone)
 				);
 				$dt = DateTime::createFromFormat('!Y-m', "$this->year-$this->month");
-				return $formatter->format($dt);
+				$name = $formatter->format($dt);
+				
+				// Capitalize first letter (Latvian and others are lowercase by default in Intl)
+				return mb_convert_case($name, MB_CASE_TITLE, 'UTF-8');
 			}
 		} catch (\Throwable $e) {
 			// fallthrough
@@ -407,13 +425,20 @@ class CalendarWidget extends Widget
 
 		try {
 			if (class_exists('IntlDateFormatter')) {
+				$pattern = match ($this->dayNameFormat) {
+					'narrow' => 'ccccc',
+					'short' => 'cccccc',
+					'full' => 'cccc',
+					default => 'ccc',
+				};
+
 				$formatter = new \IntlDateFormatter(
 					$locale,
 					\IntlDateFormatter::NONE,
 					\IntlDateFormatter::NONE,
 					$tz,
 					\IntlDateFormatter::GREGORIAN,
-					'ccc' // Localized abbreviated day name (Sun, Mon, etc.)
+					$pattern
 				);
 				
 				// Standard weekend order: 0=Sun ... 6=Sat

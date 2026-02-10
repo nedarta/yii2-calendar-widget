@@ -454,7 +454,7 @@ class CalendarWidgetTest extends TestCase
         $method = $reflection->getMethod('getMonthName');
         $method->setAccessible(true);
         
-        $this->assertEquals('janvāris', mb_strtolower($method->invoke($widgetLv)));
+        $this->assertEquals('Janvāris', $method->invoke($widgetLv));
 
         // Test day names in Latvian
         $dayNamesMethod = $reflection->getMethod('getOrderedDayNames');
@@ -526,6 +526,36 @@ class CalendarWidgetTest extends TestCase
                 $this->assertFalse($cell['isSunday']);
                 $this->assertFalse($cell['isWeekend']);
             }
+        }
+    }
+
+    public function testDayNameFormats()
+    {
+        if (!class_exists('IntlDateFormatter')) {
+            $this->markTestSkipped('Intl extension not available');
+        }
+
+        $testCases = [
+            'narrow' => 'P',
+            'short' => 'Pr',
+            'abbr' => 'Pirmd.',
+            'full' => 'Pirmdiena',
+        ];
+
+        foreach ($testCases as $format => $expected) {
+            $widget = new CalendarWidget([
+                'language' => 'lv-LV',
+                'dayNameFormat' => $format,
+                'firstDayOfWeek' => 1, // Mon start
+            ]);
+            $widget->init();
+
+            $reflection = new \ReflectionClass($widget);
+            $method = $reflection->getMethod('getOrderedDayNames');
+            $method->setAccessible(true);
+            $names = $method->invoke($widget);
+
+            $this->assertEquals($expected, $names[0], "Failed for format: $format");
         }
     }
 }
