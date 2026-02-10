@@ -107,10 +107,14 @@ use yii\widgets\Pjax;
 				<?php if (isset($events[$selectedDate])): ?>
                     <ul class="list-unstyled mb-0">
 						<?php foreach ($events[$selectedDate] as $event): ?>
-                            <li class="event-item d-flex align-items-baseline">
-                                <div class="event-time me-3"><?= Html::encode($event['time']) ?></div>
-                                <div class="event-title"><?= Html::encode($event['title']) ?></div>
-                            </li>
+                            <?php if (isset($eventRender) && $eventRender instanceof \Closure): ?>
+                                <?= $eventRender($event['model'], $this->context) ?>
+                            <?php else: ?>
+                                <li class="event-item d-flex align-items-baseline">
+                                    <div class="event-time me-3"><?= Html::encode($event['time']) ?></div>
+                                    <div class="event-title"><?= Html::encode($event['title']) ?></div>
+                                </li>
+                            <?php endif; ?>
 						<?php endforeach; ?>
                     </ul>
 				<?php else: ?>

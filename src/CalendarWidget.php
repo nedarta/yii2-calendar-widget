@@ -160,6 +160,18 @@ class CalendarWidget extends Widget
 	public $dayNameFormat = 'abbr';
 
 	/**
+	 * @var \Closure|null A callback function to customize the rendering of each event in the sidebar.
+	 * The closure should accept two parameters: ($model, $widget) and return a string (HTML).
+	 * Example:
+	 * ```php
+	 * 'eventRender' => function($model, $calendar) {
+	 *     return '<div class="custom-event">' . Html::encode($model->title) . '</div>';
+	 * }
+	 * ```
+	 */
+	public $eventRender;
+
+	/**
 	 * @var array HTML attributes for the widget's container element.
 	 * Default class is 'calendar-widget shadow-sm p-4'.
 	 * Default id is '{widgetId}-container'.
@@ -318,6 +330,7 @@ class CalendarWidget extends Widget
 			'todayString' => $this->getTodayString(),
 			'orderedDayNames' => $this->getOrderedDayNames(),
 			'buildUrl' => $this->getBuildUrlFunction(),
+			'eventRender' => $this->eventRender,
 		]);
 	}
 
@@ -566,6 +579,7 @@ class CalendarWidget extends Widget
 			$events[$date][] = [
 				'time' => $time,
 				'title' => ArrayHelper::getValue($model, $this->titleAttribute),
+				'model' => $model, // Keep reference to raw model for custom rendering
 			];
 		}
 

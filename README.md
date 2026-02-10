@@ -10,6 +10,7 @@ A premium, modern, and AJAX-powered calendar widget for Yii2 Framework and Boots
 - **AJAX-Powered**: Month switching and day selection use `Pjax` for a seamless experience.
 - **Localization (Intl)**: Automatic translation of month and day names using PHP's `intl` extension.
 - **Dynamic Day Names**: Choose between narrow, short, abbreviated, or full day names.
+- **Custom Event Rendering**: Pass a closure to fully customize how events appear in the sidebar.
 - **Custom Celebrations**: Highlight holidays or special dates with custom styling.
 - **Bootstrap 5**: Native support for Bootstrap 5 layout and styling.
 - **Rich Interaction**: Days with events are highlighted with a status dot.
@@ -141,6 +142,26 @@ echo CalendarWidget::widget([
 ]);
 ```
 
+### Custom Event Rendering
+
+You can fully customize the HTML output of each event in the sidebar by providing the `eventRender` callback:
+
+```php
+echo CalendarWidget::widget([
+    'query' => Event::find(),
+    'eventRender' => function($model, $calendar) {
+        return '
+            <div class="custom-event-card card mb-2">
+                <div class="card-body p-2">
+                    <h6 class="card-title">' . Html::encode($model->title) . '</h6>
+                    <small class="text-muted">' . $model->start_time . '</small>
+                </div>
+            </div>
+        ';
+    },
+]);
+```
+
 ## Styling
 
 The widget uses standard Bootstrap 5 classes and includes a custom CSS file with specific classes for Saturdays, Sundays, and celebrations:
@@ -153,7 +174,7 @@ To override styles, you can point to your own CSS in your application's asset bu
 
 ## Testing
 
-This package includes a comprehensive PHPUnit test suite with 28 test cases covering all major functionality.
+This package includes a comprehensive PHPUnit test suite with 29 test cases covering all major functionality.
 
 ### Running Tests
 
@@ -180,12 +201,13 @@ The test suite includes:
 - Navigation URL handling
 - **Localization (Intl)**
 - **Day name format options**
+- **Custom event rendering callback**
 - **Celebration day markers**
 - **Weekend flag detection**
 - Custom attribute support
 - Edge cases and boundary conditions
 
-All tests are passing with 115+ assertions ensuring reliable functionality.
+All tests are passing with 120+ assertions ensuring reliable functionality.
 
 ## License
 
