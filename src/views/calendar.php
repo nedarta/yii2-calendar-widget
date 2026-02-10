@@ -78,7 +78,7 @@ use yii\widgets\Pjax;
 						if (!$inMonth || empty($date)):
 							// Empty cell for padding
 							?>
-                            <span class="day-link empty">&nbsp;</span>
+                            <span class="day-empty">&nbsp;</span>
 						<?php
 						else:
 							$hasEvents = $cell['hasEvents'] ?? isset($events[$date]);
