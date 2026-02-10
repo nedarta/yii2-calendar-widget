@@ -243,9 +243,9 @@ class CalendarWidget extends Widget
 			$this->options['id'] = $this->getId() . '-container';
 		}
 
-		// Handle AJAX month/year changes
+		// Handle URL parameters (month, year, date)
 		$request = (isset(Yii::$app) && Yii::$app->has('request')) ? Yii::$app->get('request') : null;
-		if ($request instanceof \yii\web\Request && !empty($request->isPjax)) {
+		if ($request instanceof \yii\web\Request) {
 			$this->month = (int)$request->get('month', $this->month);
 			$this->year = (int)$request->get('year', $this->year);
 			$this->selectedDate = $request->get('date', $request->get('selectedDate', $this->selectedDate));
@@ -491,11 +491,30 @@ class CalendarWidget extends Widget
 				return \yii\helpers\Url::to(array_merge($base, $params));
 			}
 
-			$url = \yii\helpers\Url::to($base);
+			// For string URLs, we must preserve existing query parameters (like routing 'r')
+			$url = \yii\helpers\Url::to($base ?? '');
 			$parts = parse_url($url);
-			$path = $parts['path'] ?? '';
-
-			return \yii\helpers\Url::to($path) . '?' . http_build_query($params);
+			
+			$query = [];
+			if (isset($parts['query'])) {
+				parse_str($parts['query'], $query);
+			}
+			
+			// Merge existing parameters with new ones (new ones overwrite existing)
+			$mergedParams = array_merge($query, $params);
+			
+			// Reconstruct the URL without using Url::to() again to avoid double prefixing
+			$scheme   = isset($parts['scheme']) ? $parts['scheme'] . '://' : '';
+			$host     = $parts['host'] ?? '';
+			$port     = isset($parts['port']) ? ':' . $parts['port'] : '';
+			$user     = $parts['user'] ?? '';
+			$pass     = isset($parts['pass']) ? ':' . $parts['pass'] : '';
+			$pass     = ($user || $pass) ? "$pass@" : '';
+			$path     = $parts['path'] ?? '';
+			$fragment = isset($parts['fragment']) ? '#' . $parts['fragment'] : '';
+			
+			$queryStr = http_build_query($mergedParams);
+			return "$scheme$user$pass$host$port$path" . ($queryStr ? '?' . $queryStr : '') . $fragment;
 		};
 	}
 
