@@ -554,24 +554,6 @@ class CalendarWidget extends Widget
 			$gridPosition++;
 		}
 
-		// Add empty cells at the end to complete the grid (optional, for cleaner layout)
-		$totalCells = count($cells);
-		$remainingCells = (7 - ($totalCells % 7)) % 7;
-		for ($i = 0; $i < $remainingCells; $i++) {
-			$dayOfWeek = $gridPosition % 7;
-			$cells[] = [
-				'date' => '',
-				'label' => '',
-				'inMonth' => false,
-				'isToday' => false,
-				'isSelected' => false,
-				'hasEvents' => false,
-				'isWeekend' => $this->isWeekendDay($dayOfWeek),
-				'dayOfWeek' => $dayOfWeek,
-			];
-			$gridPosition++;
-		}
-
 		return $cells;
 	}
 

@@ -107,8 +107,11 @@ class CalendarWidgetTest extends TestCase
         $method->setAccessible(true);
         $days = $method->invoke($widget);
 
-        // Should always have 42 days (6 weeks)
-        $this->assertCount(42, $days);
+        // Calculate expected total days: padding + days in month
+        $daysInMonth = (int)date('t', strtotime("$year-$month-01"));
+        $expectedTotalCount = $expectedNullsBefore + $daysInMonth;
+
+        $this->assertCount($expectedTotalCount, $days);
 
         // Count leading empty/non-month slots
         $leadingNonMonth = 0;
@@ -151,28 +154,6 @@ class CalendarWidgetTest extends TestCase
         ];
     }
 
-    public function testGenerateCalendarDaysAlwaysReturns42Days()
-    {
-        // Test various months to ensure we always get 42 days
-        $testCases = [
-            [2025, 1], [2025, 2], [2025, 3], [2025, 4],
-            [2025, 5], [2025, 6], [2025, 7], [2025, 8],
-            [2025, 9], [2025, 10], [2025, 11], [2025, 12],
-            [2024, 2], // Leap year
-        ];
-
-        foreach ($testCases as [$year, $month]) {
-            $widget = new CalendarWidget(['year' => $year, 'month' => $month]);
-            $widget->init();
-
-            $reflection = new \ReflectionClass($widget);
-            $method = $reflection->getMethod('generateCalendarDays');
-            $method->setAccessible(true);
-            $days = $method->invoke($widget);
-
-            $this->assertCount(42, $days, "Failed for $year-$month");
-        }
-    }
 
     public function testGetEventsWithNoQuery()
     {
