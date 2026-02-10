@@ -9,6 +9,7 @@ A premium, modern, and AJAX-powered calendar widget for Yii2 Framework and Boots
 - **ActiveRecord Integration**: Easily bind the widget to any `ActiveQuery`.
 - **AJAX-Powered**: Month switching and day selection use `Pjax` for a seamless experience.
 - **Bootstrap 5**: Native support for Bootstrap 5 layout and styling.
+- **Internationalization**: Full support for multiple languages using PHP Intl extension.
 - **Rich Interaction**: Days with events are highlighted with a status dot.
 - **Flexible Attributes**: Supports dot-notation for relations (e.g., `event.name`) and single `datetime` columns.
 - **Mobile Responsive**: Adaptive layout for smaller screens.
@@ -92,13 +93,30 @@ echo CalendarWidget::widget([
 
 ### Localization & Internationalization
 
-Customize day names and the first day of the week:
+The widget automatically uses PHP's Intl extension for localized month and day names. By default, it uses `Yii::$app->language`:
+
+```php
+echo CalendarWidget::widget([
+    'query' => Event::find(),
+    'language' => 'de-DE', // German locale
+    'firstDayOfWeek' => 1, // 0 = Sunday, 1 = Monday, etc.
+]);
+```
+
+Supported language formats:
+- `'en-US'` - English (United States)
+- `'de-DE'` - German (Germany)
+- `'lv-LV'` - Latvian (Latvia)
+- `'fr-FR'` - French (France)
+- And many more...
+
+If you prefer custom day names instead of auto-generated ones:
 
 ```php
 echo CalendarWidget::widget([
     'query' => Event::find(),
     'dayNames' => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-    'firstDayOfWeek' => 1, // 0 = Sunday, 1 = Monday, etc.
+    'firstDayOfWeek' => 1,
 ]);
 ```
 

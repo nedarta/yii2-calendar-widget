@@ -51,21 +51,34 @@ use yii\widgets\Pjax;
             </div>
 
             <div class="calendar-grid">
-				<?php foreach ($orderedDayNames as $index => $dayName): ?>
-                    <div class="day-name<?= ($index === 0 || $index === 6) ? ' weekend' : '' ?>" data-day="<?= $index ?>">
+				<?php foreach ($orderedDayNames as $index => $dayName):
+					$dayNameClass = 'day-name';
+					if ($index === 0) {
+						$dayNameClass .= ' sunday';
+					} elseif ($index === 6) {
+						$dayNameClass .= ' saturday';
+					}
+				?>
+                    <div class="<?= $dayNameClass ?>" data-day="<?= $index ?>">
 						<?= Html::encode($dayName) ?>
                     </div>
 				<?php endforeach; ?>
 
-				<?php foreach ($days as $cell): ?>
-                    <div class="day-number<?= !empty($cell['isWeekend']) ? ' weekend' : '' ?>" data-day="<?= $cell['dayOfWeek'] ?? '' ?>">
+				<?php foreach ($days as $cell):
+					$dayNumClass = 'day-number';
+					if (!empty($cell['isSunday'])) {
+						$dayNumClass .= ' sunday';
+					} elseif (!empty($cell['isSaturday'])) {
+						$dayNumClass .= ' saturday';
+					}
+				?>
+                    <div class="<?= $dayNumClass ?>" data-day="<?= $cell['dayOfWeek'] ?? '' ?>">
 						<?php
 						$date = $cell['date'];
 						$dayNum = $cell['label'];
 						$inMonth = $cell['inMonth'] ?? false;
 
 						if (!$inMonth || empty($date)):
-							// Empty cell for padding
 							?>
                             <span class="day-link empty">&nbsp;</span>
 						<?php

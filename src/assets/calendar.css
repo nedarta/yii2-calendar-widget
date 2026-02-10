@@ -28,17 +28,15 @@
     font-weight: 500;
 }
 
-/* Sunday styling (first weekend column - red) */
-.calendar-widget .day-name[data-day="0"],
-.calendar-widget .day-name.weekend:first-of-type,
-.calendar-widget .day-number[data-day="0"] {
+/* Sunday styling - red */
+.calendar-widget .day-name.sunday,
+.calendar-widget .day-number.sunday {
     color: #f44336;
 }
 
-/* Saturday styling (last weekend column - blue) */
-.calendar-widget .day-name[data-day="6"],
-.calendar-widget .day-name.weekend:last-of-type,
-.calendar-widget .day-number[data-day="6"] {
+/* Saturday styling - blue */
+.calendar-widget .day-name.saturday,
+.calendar-widget .day-number.saturday {
     color: #0DA5F6;
 }
 

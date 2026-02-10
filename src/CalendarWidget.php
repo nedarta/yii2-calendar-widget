@@ -28,8 +28,8 @@ use DateTimeZone;
  *     'month' => 2,
  *     'year' => 2026,
  *     'selectedDate' => '2026-02-09',
- *     'firstDayOfWeek' => 1, // Start week on Monday
- *     'dayNames' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+ *     'firstDayOfWeek' => 1,
+ *     'language' => 'lv-LV',
  * ]);
  * ```
  *
@@ -44,8 +44,9 @@ use DateTimeZone;
  * @property string $viewName The name of the view file to render (default: 'calendar')
  * @property string|array|null $navUrl URL for month navigation links. Defaults to current URL
  * @property string|array|null $viewUrl URL for date selection links. Defaults to current URL
- * @property array $dayNames Array of day name abbreviations (7 elements). Default: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+ * @property array|null $dayNames Array of day name abbreviations (7 elements). If null, auto-generated using Intl
  * @property int $firstDayOfWeek First day of the week (0=Sunday, 1=Monday, etc.). Default: 0
+ * @property string|null $language Language/locale code for internationalization. Defaults to Yii::$app->language
  * @property array $options HTML attributes for the container element
  *
  * @author Nedarta Calendar
@@ -121,12 +122,13 @@ class CalendarWidget extends Widget
 	public $viewUrl;
 
 	/**
-	 * @var array Array of day name abbreviations for the calendar header.
+	 * @var array|null Array of day name abbreviations for the calendar header.
 	 * Must contain exactly 7 elements starting with Sunday.
 	 * Example: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+	 * If null, day names will be auto-generated using Intl based on the language setting.
 	 * The array will be reordered based on $firstDayOfWeek setting.
 	 */
-	public $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	public $dayNames;
 
 	/**
 	 * @var int The first day of the week (0=Sunday, 1=Monday, 2=Tuesday, etc.).
@@ -134,6 +136,13 @@ class CalendarWidget extends Widget
 	 * For example, setting this to 1 will make Monday the first column.
 	 */
 	public $firstDayOfWeek = 0;
+
+	/**
+	 * @var string|null The language/locale code for internationalization (e.g., 'en-US', 'de-DE', 'lv-LV').
+	 * If null, will use Yii::$app->language.
+	 * This affects month names and day names when using Intl.
+	 */
+	public $language;
 
 	/**
 	 * @var array HTML attributes for the widget's container element.
@@ -220,6 +229,14 @@ class CalendarWidget extends Widget
 			$this->firstDayOfWeek = 0;
 		}
 
+		if ($this->language === null && isset(Yii::$app) && !empty(Yii::$app->language)) {
+			$this->language = Yii::$app->language;
+		}
+
+		if ($this->dayNames === null) {
+			$this->dayNames = $this->generateDayNames();
+		}
+
 		// Normalize selectedDate using resolved timezone
 		try {
 			$tz = $this->getTimeZone();
@@ -291,13 +308,75 @@ class CalendarWidget extends Widget
 	}
 
 	/**
-	 * Gets the full month name for the current month.
+	 * Gets the full month name for the current month using Intl.
 	 *
 	 * @return string Month name (e.g., "February")
 	 */
 	protected function getMonthName(): string
 	{
+		if (class_exists('IntlDateFormatter')) {
+			$locale = $this->normalizeLocale($this->language ?? 'en-US');
+			$formatter = new \IntlDateFormatter(
+				$locale,
+				\IntlDateFormatter::NONE,
+				\IntlDateFormatter::NONE,
+				null,
+				null,
+				'LLLL'
+			);
+			$date = new DateTime(sprintf('%04d-%02d-01', $this->year, $this->month));
+			$monthName = $formatter->format($date);
+			if ($monthName !== false) {
+				return $monthName;
+			}
+		}
+
 		return DateTime::createFromFormat('!m', $this->month)->format('F');
+	}
+
+	/**
+	 * Generates localized day names using Intl.
+	 *
+	 * @return array Array of 7 day names starting with Sunday
+	 */
+	protected function generateDayNames(): array
+	{
+		if (class_exists('IntlDateFormatter')) {
+			$locale = $this->normalizeLocale($this->language ?? 'en-US');
+			$formatter = new \IntlDateFormatter(
+				$locale,
+				\IntlDateFormatter::NONE,
+				\IntlDateFormatter::NONE,
+				null,
+				null,
+				'EEE'
+			);
+
+			$dayNames = [];
+			for ($i = 0; $i < 7; $i++) {
+				$date = new DateTime('1970-01-04 +' . $i . ' days');
+				$dayName = $formatter->format($date);
+				$dayNames[] = ($dayName !== false) ? $dayName : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][$i];
+			}
+			return $dayNames;
+		}
+
+		return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	}
+
+	/**
+	 * Normalizes locale string for Intl compatibility.
+	 *
+	 * @param string|null $locale Locale string (e.g., 'en-US', 'en_US')
+	 * @return string Normalized locale string
+	 */
+	protected function normalizeLocale(?string $locale): string
+	{
+		if (empty($locale)) {
+			return 'en-US';
+		}
+
+		return str_replace('_', '-', $locale);
 	}
 
 	/**
@@ -523,6 +602,7 @@ class CalendarWidget extends Widget
 		// Add empty cells at the beginning
 		for ($i = 0; $i < $paddingDays; $i++) {
 			$dayOfWeek = $gridPosition % 7;
+			$actualDayOfWeek = ($dayOfWeek + $this->firstDayOfWeek) % 7;
 			$cells[] = [
 				'date' => '',
 				'label' => '',
@@ -531,6 +611,8 @@ class CalendarWidget extends Widget
 				'isSelected' => false,
 				'hasEvents' => false,
 				'isWeekend' => $this->isWeekendDay($dayOfWeek),
+				'isSunday' => $actualDayOfWeek === 0,
+				'isSaturday' => $actualDayOfWeek === 6,
 				'dayOfWeek' => $dayOfWeek,
 			];
 			$gridPosition++;
@@ -541,6 +623,7 @@ class CalendarWidget extends Widget
 			$cellDt = $firstDayOfMonth->modify("+".($i-1)." days");
 			$cellDate = $cellDt->format('Y-m-d');
 			$dayOfWeek = $gridPosition % 7;
+			$actualDayOfWeek = ($dayOfWeek + $this->firstDayOfWeek) % 7;
 			$cells[] = [
 				'date' => $cellDate,
 				'label' => $i,
@@ -549,6 +632,8 @@ class CalendarWidget extends Widget
 				'isSelected' => ($cellDate === $this->selectedDate),
 				'hasEvents' => false,
 				'isWeekend' => $this->isWeekendDay($dayOfWeek),
+				'isSunday' => $actualDayOfWeek === 0,
+				'isSaturday' => $actualDayOfWeek === 6,
 				'dayOfWeek' => $dayOfWeek,
 			];
 			$gridPosition++;
