@@ -117,7 +117,7 @@ use yii\widgets\Pjax;
                                         <?= !empty($event['title']) ? Html::encode($event['title']) : 'Celebration' ?>
                                     </div>
                                 </li>
-                            <?php elseif (isset($eventRender) && $eventRender instanceof \Closure): ?>
+                            <?php elseif (isset($eventRender) && $eventRender instanceof \Closure && !empty($event['model'])): ?>
                                 <?= $eventRender($event['model'], $this->context) ?>
                             <?php else: ?>
                                 <li class="event-item d-flex align-items-baseline">
