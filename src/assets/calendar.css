@@ -1,6 +1,4 @@
 .calendar-widget {
-    background: #fff;
-    border-radius: 8px;
     overflow: hidden;
 }
 
@@ -24,7 +22,6 @@
 }
 
 .calendar-widget .day-name {
-    color: #333;
     font-weight: 500;
 }
 
