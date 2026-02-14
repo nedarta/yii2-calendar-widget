@@ -174,7 +174,7 @@ class CalendarWidget extends Widget
 
 	/**
 	 * @var array HTML attributes for the widget's container element.
-	 * Default class is 'calendar-widget shadow-sm p-4'.
+	 * Default class is 'calendar-widget'.
 	 * Default id is '{widgetId}-container'.
 	 */
 	public $options = [];
@@ -238,7 +238,7 @@ class CalendarWidget extends Widget
 
 		// Set default HTML options
 		if (!isset($this->options['class'])) {
-			$this->options['class'] = 'calendar-widget shadow-sm p-4';
+			$this->options['class'] = 'calendar-widget';
 		}
 		if (!isset($this->options['id'])) {
 			$this->options['id'] = $this->getId() . '-container';

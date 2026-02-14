@@ -35,7 +35,7 @@ use yii\widgets\Pjax;
         <!-- Calendar Grid Column -->
         <div class="col-md-7 border-end">
             <div class="calendar-header d-flex justify-content-between align-items-center mb-4">
-                <h3 class="fw-light mb-0"><?= Html::encode($monthName) ?> <?= $year ?></h3>
+                <h3 class="mb-0"><?= Html::encode($monthName) ?> <?= $year ?></h3>
                 <div class="nav-controls">
 					<?= Html::a('&lt;', $buildUrl($navUrl, ['month' => $prevMonth, 'year' => $prevYear]), [
 						'class' => 'calendar-nav-btn',
