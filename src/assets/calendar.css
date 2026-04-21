@@ -1,5 +1,53 @@
 .calendar-widget {
     overflow: hidden;
+    --calendar-text: #2f2a37;
+    --calendar-muted: #7d7881;
+    --calendar-border: #ece8f0;
+    --calendar-hover: #f3f1f6;
+    --calendar-nav: #4c3571;
+    --calendar-saturday: #0a84d6;
+    --calendar-sunday: #e53935;
+    --calendar-event-time: #2f2a37;
+    --calendar-event-dot: #fc3969;
+    color: var(--calendar-text);
+}
+
+.calendar-widget[data-theme="dark"] {
+    --calendar-text: #efeaf7;
+    --calendar-muted: #c7c0d3;
+    --calendar-border: #3f3553;
+    --calendar-hover: #2b2340;
+    --calendar-nav: #d1c4ea;
+    --calendar-saturday: #73c4ff;
+    --calendar-sunday: #ff8a80;
+    --calendar-event-time: #efeaf7;
+    --calendar-event-dot: #ff7ea0;
+}
+
+[data-bs-theme="dark"] .calendar-widget:not([data-theme="light"]) {
+    --calendar-text: #efeaf7;
+    --calendar-muted: #c7c0d3;
+    --calendar-border: #3f3553;
+    --calendar-hover: #2b2340;
+    --calendar-nav: #d1c4ea;
+    --calendar-saturday: #73c4ff;
+    --calendar-sunday: #ff8a80;
+    --calendar-event-time: #efeaf7;
+    --calendar-event-dot: #ff7ea0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .calendar-widget:not([data-theme="light"]) {
+        --calendar-text: #efeaf7;
+        --calendar-muted: #c7c0d3;
+        --calendar-border: #3f3553;
+        --calendar-hover: #2b2340;
+        --calendar-nav: #d1c4ea;
+        --calendar-saturday: #73c4ff;
+        --calendar-sunday: #ff8a80;
+        --calendar-event-time: #efeaf7;
+        --calendar-event-dot: #ff7ea0;
+    }
 }
 
 .calendar-widget .calendar-header {
@@ -23,18 +71,19 @@
 
 .calendar-widget .day-name {
     font-weight: 500;
+    color: var(--calendar-text);
 }
 
 /* Saturday styling (blue) */
 .calendar-widget .day-name.saturday,
 .calendar-widget .day-number.saturday {
-    color: #0DA5F6;
+    color: var(--calendar-saturday);
 }
 
 /* Sunday styling (red) */
 .calendar-widget .day-name.sunday,
 .calendar-widget .day-number.sunday {
-    color: #f44336;
+    color: var(--calendar-sunday);
 }
 
 /* Celebration days (pinkish/purple) */
@@ -54,7 +103,7 @@
 }
 
 .calendar-widget .day-number {
-    color: #A8A7A8;
+    color: var(--calendar-muted);
 }
 
 .calendar-widget .day-link {
@@ -71,7 +120,7 @@
 }
 
 .calendar-widget .day-link:hover {
-    background-color: #f0f0f0;
+    background-color: var(--calendar-hover);
 }
 
 .calendar-widget .day-link.active {
@@ -86,7 +135,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: #FC3969;
+    background-color: var(--calendar-event-dot);
     top: 2px;
     right: 2px;
 }
@@ -96,12 +145,12 @@
 }
 
 .calendar-widget .event-list {
-    border-left: 1px solid #f0f0f0;
+    border-left: 1px solid var(--calendar-border);
     padding-left: 20px;
 }
 
 .calendar-widget .event-item {
-    border-bottom: 1px solid #F2F1F2;
+    border-bottom: 1px solid var(--calendar-border);
     padding: 10px 0;
 }
 
@@ -111,7 +160,7 @@
 
 .calendar-widget .event-time {
     font-weight: bold;
-    color: #333;
+    color: var(--calendar-event-time);
     width: 60px;
 }
 
@@ -119,9 +168,14 @@
     border: none;
     background: none;
     font-size: 1.2rem;
-    color: #4C3571;
+    color: var(--calendar-nav);
     cursor: pointer;
     padding: 0 10px;
+}
+
+.calendar-widget .calendar-header h3,
+.calendar-widget .event-title {
+    color: var(--calendar-text);
 }
 
 .calendar-widget .calendar-nav-btn:hover {
@@ -131,7 +185,7 @@
 @media (max-width: 768px) {
     .calendar-widget .event-list {
         border-left: none;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid var(--calendar-border);
         padding-left: 0;
         padding-top: 20px;
         margin-top: 20px;
